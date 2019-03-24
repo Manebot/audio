@@ -317,13 +317,13 @@ public class AudioPlugin implements PluginReference, Runnable, MixerRegistrant {
     }
 
     @Override
-    public void load(Plugin.Future plugin) {
-        int sampleRate = Integer.parseInt(plugin.getRegistration().getInstance().getProperty("sampleRate", "48000"));
-        int sampleSize = Integer.parseInt(plugin.getRegistration().getInstance().getProperty("sampleBits", "16"));
-        int channels = Integer.parseInt(plugin.getRegistration().getInstance().getProperty("channels", "2"));
+    public void load(Plugin.Future future) {
+        int sampleRate = Integer.parseInt(future.getPlugin().getProperty("sampleRate", "48000"));
+        int sampleSize = Integer.parseInt(future.getPlugin().getProperty("sampleBits", "16"));
+        int channels = Integer.parseInt(future.getPlugin().getProperty("channels", "2"));
 
-        bufferTime = Integer.parseInt(plugin.getRegistration().getInstance().getProperty("delay", "500"));
-        loopDelay = Integer.parseInt(plugin.getRegistration().getInstance().getProperty("loopDelay",
+        bufferTime = Integer.parseInt(future.getPlugin().getProperty("delay", "500"));
+        loopDelay = Integer.parseInt(future.getPlugin().getProperty("loopDelay",
                 Integer.toString((int) bufferTime / 10)));
 
         resamplerFactory = new FFmpegResampler.FFmpegResamplerFactory();
@@ -331,8 +331,7 @@ public class AudioPlugin implements PluginReference, Runnable, MixerRegistrant {
         this.format = new AudioFormat(sampleRate, sampleSize, channels, true, false);
         bufferSize = getBufferSizeInSamples(format);
 
-        plugin.getRegistration().getInstance()
-                .getLogger().info("Starting Audio subsystem with " + sampleRate + "Hz, " +
+        future.getPlugin().getLogger().info("Starting Audio subsystem with " + sampleRate + "Hz, " +
                 sampleSize + "bit " + channels + "ch format (" + bufferTime + "ms delay, " +
                 (int)(1000.0D / loopDelay) + "Hz update rate)...");
 
@@ -353,11 +352,11 @@ public class AudioPlugin implements PluginReference, Runnable, MixerRegistrant {
                     .getLogger().warning("Failed to open native audio device! Continuing without system audio...");
         }
 
-        plugin.getRegistration().getInstance().getLogger().info("Audio subsystem started.");
+        future.getPlugin().getLogger().info("Audio subsystem started.");
 
-        this.plugin = plugin.getRegistration().getInstance();
+        this.plugin = future.getPlugin();
 
-        plugin.afterAsync((registration -> this.run()));
+        future.afterAsync((registration -> this.run()));
     }
 
     @Override

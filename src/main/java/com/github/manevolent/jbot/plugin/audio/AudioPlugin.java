@@ -338,8 +338,7 @@ public class AudioPlugin implements PluginReference, Runnable, MixerRegistrant {
         try {
             this.nativeMixer = createMixer("native", new NativeMixerSink(format, bufferSize));
 
-            plugin.getRegistration().getInstance()
-                    .getLogger().fine("Native audio line opened, testing output...");
+            future.getPlugin().getLogger().fine("Native audio line opened, testing output...");
 
             try {
                 this.nativeMixer.setRunning(true);
@@ -348,8 +347,8 @@ public class AudioPlugin implements PluginReference, Runnable, MixerRegistrant {
                 throw new PluginException(ex);
             }
         } catch (Exception e) {
-            plugin.getRegistration().getInstance()
-                    .getLogger().warning("Failed to open native audio device! Continuing without system audio...");
+            future.getPlugin().getLogger()
+                    .warning("Failed to open native audio device! Continuing without system audio...");
         }
 
         future.getPlugin().getLogger().info("Audio subsystem started.");

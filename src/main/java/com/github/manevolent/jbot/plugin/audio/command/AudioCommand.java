@@ -56,7 +56,7 @@ public class AudioCommand extends AnnotatedCommandExecutor {
     public void info(CommandSender sender,
                         @CommandArgumentLabel.Argument(label = "info") String info)
             throws CommandExecutionException {
-        getAudioInfo(sender, sender.getConversation());
+        getAudioInfo(sender);
     }
 
     @Command(description = "Gets player information for another conversation", permission = "audio.player.info")
@@ -94,7 +94,7 @@ public class AudioCommand extends AnnotatedCommandExecutor {
             throws CommandExecutionException {
         Conversation conversation = sender.getConversation();
         if (conversation == null) throw new CommandArgumentException("Unknown conversation.");
-        AudioChannel channel = pluginRegistration.getInstance().getInstance(AudioPlugin.class).getChannel(conversation);
+        AudioChannel channel = pluginRegistration.getInstance().getInstance(AudioPlugin.class).getChannel(sender);
         Mixer mixer = channel.getMixer();
         boolean enable = toggle.equalsIgnoreCase("enable");
         if (mixer.isFiltering() != enable) {
@@ -115,6 +115,8 @@ public class AudioCommand extends AnnotatedCommandExecutor {
     private void getAudioPlayers(CommandSender sender, Conversation conversation, int page)
             throws CommandExecutionException {
         AudioChannel channel = pluginRegistration.getInstance().getInstance(AudioPlugin.class).getChannel(conversation);
+        if (channel == null) throw new CommandArgumentException("Audio channel not found");
+
         List<AudioPlayer> players = new ArrayList<>(channel.getPlayers());
         players.sort((player, t1) -> -player.getStarted().compareTo(t1.getStarted()));
 
@@ -130,9 +132,26 @@ public class AudioCommand extends AnnotatedCommandExecutor {
         ).send();
     }
 
+
+    private void getAudioInfo(CommandSender sender)
+            throws CommandExecutionException {
+        AudioChannel channel = pluginRegistration.getInstance().getInstance(AudioPlugin.class).getChannel(sender);
+        getAudioInfo(sender, channel);
+    }
+
     private void getAudioInfo(CommandSender sender, Conversation conversation)
             throws CommandExecutionException {
         AudioChannel channel = pluginRegistration.getInstance().getInstance(AudioPlugin.class).getChannel(conversation);
+        if (channel == null)
+            throw new CommandArgumentException("Conversation does not have an associated audio channel");
+
+        getAudioInfo(sender, channel);
+    }
+
+    private void getAudioInfo(CommandSender sender, AudioChannel channel)
+            throws CommandExecutionException {
+        if (channel == null) throw new CommandArgumentException("Audio channel not found");
+
         List<User> listeners = channel.getActiveListeners();
         sender.details(
                 builder -> builder.name("Audio channel").key(channel.getId())

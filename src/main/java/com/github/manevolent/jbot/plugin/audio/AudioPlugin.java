@@ -1,5 +1,6 @@
 package com.github.manevolent.jbot.plugin.audio;
 
+import com.github.manevolent.jbot.command.CommandSender;
 import com.github.manevolent.jbot.conversation.Conversation;
 import com.github.manevolent.jbot.plugin.Plugin;
 import com.github.manevolent.jbot.plugin.PluginException;
@@ -121,6 +122,23 @@ public class AudioPlugin implements PluginReference, Runnable, MixerRegistrant {
 
     public AudioChannel getChannel(Conversation conversation) {
         return getChannelById(conversation.getId());
+    }
+
+    public Mixer getMixer(Conversation conversation) {
+        AudioChannel channel = getChannelById(conversation.getId());
+        if (channel == null) return null;
+        else return channel.getMixer();
+    }
+
+    public AudioChannel getChannel(CommandSender sender) {
+        AudioChannel channel = getChannel(sender.getConversation());
+        if (channel == null)
+            throw new IllegalArgumentException("There is no audio channel associated with this conversation.");
+        return channel;
+    }
+
+    public Mixer getMixer(CommandSender sender) {
+        return getChannel(sender).getMixer();
     }
 
     public List<AudioChannel.Listener> getAudioChannelListeners(String channelId) {

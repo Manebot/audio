@@ -11,7 +11,6 @@ import com.github.manevolent.jbot.command.executor.chained.argument.CommandArgum
 import com.github.manevolent.jbot.plugin.Plugin;
 import com.github.manevolent.jbot.plugin.PluginRegistration;
 import com.github.manevolent.jbot.plugin.audio.AudioPlugin;
-import com.github.manevolent.jbot.plugin.audio.channel.AudioChannel;
 import com.github.manevolent.jbot.plugin.audio.mixer.Mixer;
 import com.github.manevolent.jbot.plugin.audio.mixer.input.MixerChannel;
 import com.github.manevolent.jbot.plugin.audio.mixer.output.MixerSink;
@@ -32,11 +31,11 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                         @CommandArgumentLabel.Argument(label = "info") String players,
                         @CommandArgumentPage.Argument() int page)
             throws CommandExecutionException {
-        AudioChannel channel = pluginRegistration
+        Mixer mixer = pluginRegistration
                 .getInstance()
                 .getInstance(AudioPlugin.class)
-                .getChannel(sender.getConversation());
-        Mixer mixer = channel.getMixer();
+                .getMixer(sender);
+
         getMixerInfo(sender, mixer);
     }
 
@@ -54,11 +53,11 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                      @CommandArgumentLabel.Argument(label = "channels") String players,
                      @CommandArgumentPage.Argument() int page)
             throws CommandExecutionException {
-        AudioChannel channel = pluginRegistration
+        Mixer mixer = pluginRegistration
                 .getInstance()
                 .getInstance(AudioPlugin.class)
-                .getChannel(sender.getConversation());
-        Mixer mixer = channel.getMixer();
+                .getMixer(sender);
+
         getMixerChannels(sender, mixer, page);
     }
 
@@ -79,27 +78,33 @@ public class MixerCommand extends AnnotatedCommandExecutor {
         getMixers(sender, page);
     }
 
-    @Command(description = "Lists mixer channels for the sink", permission = "audio.mixer.sinks")
+    @Command(description = "Lists mixer channels for the current sink", permission = "audio.mixer.sinks")
+    public void sinks(CommandSender sender,
+                      @CommandArgumentLabel.Argument(label = "sinks") String sinks,
+                      @CommandArgumentPage.Argument() int page)
+            throws CommandExecutionException {
+        getMixerSinks(
+                sender,
+                page
+        );
+    }
+
+    @Command(description = "Lists mixer channels for the a specific sink", permission = "audio.mixer.sinks")
     public void sinks(CommandSender sender,
                       @CommandArgumentLabel.Argument(label = "sinks") String sinks,
                       @CommandArgumentString.Argument(label = "id") String id,
                       @CommandArgumentPage.Argument() int page)
             throws CommandExecutionException {
-        AudioChannel channel = pluginRegistration
-                .getInstance()
-                .getInstance(AudioPlugin.class)
-                .getChannel(sender.getConversation());
-        Mixer mixer = channel.getMixer();
         getMixerSinks(
                 sender,
-                mixer,
+                getMixerById(id),
                 page
         );
     }
 
-    @Command(description = "Lists mixer channels for the sink", permission = "audio.mixer.sinks")
-    public void sinks(CommandSender sender,
-                      @CommandArgumentLabel.Argument(label = "volume") String sinks,
+    @Command(description = "Changes mixer volume for your players", permission = "audio.mixer.volume")
+    public void volume(CommandSender sender,
+                      @CommandArgumentLabel.Argument(label = "volume") String label,
                       @CommandArgumentNumeric.Argument() int volume)
             throws CommandExecutionException {
         double value = (double) volume;
@@ -166,6 +171,16 @@ public class MixerCommand extends AnnotatedCommandExecutor {
         ).send();
     }
 
+    private void getMixerSinks(CommandSender sender, int page)
+            throws CommandExecutionException {
+        Mixer mixer = pluginRegistration
+                .getInstance()
+                .getInstance(AudioPlugin.class)
+                .getMixer(sender);
+
+        getMixerSinks(sender, mixer, page);
+    }
+
     private void getMixerSinks(CommandSender sender, Mixer mixer, int page)
             throws CommandExecutionException {
         sender.list(
@@ -187,6 +202,15 @@ public class MixerCommand extends AnnotatedCommandExecutor {
 
     private double getPositionInSeconds(long position, javax.sound.sampled.AudioFormat format) {
         return (double)position / (double)(format.getSampleRate()*format.getChannels());
+    }
+
+    private void getMixerInfo(CommandSender sender) throws CommandExecutionException {
+        Mixer mixer = pluginRegistration
+                .getInstance()
+                .getInstance(AudioPlugin.class)
+                .getMixer(sender);
+
+        getMixerInfo(sender, mixer);
     }
 
     private void getMixerInfo(CommandSender sender, Mixer mixer) throws CommandExecutionException {

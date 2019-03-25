@@ -6,7 +6,7 @@
 
     <groupId>com.github.manevolent</groupId>
     <artifactId>jbot-audio</artifactId>
-    <version>0.2</version>
+    <version>0.1.8</version>
 
     <repositories>
         <repository>
@@ -37,14 +37,14 @@
         <dependency>
             <groupId>com.github.manevolent</groupId>
             <artifactId>jbot-core</artifactId>
-            <version>0.1.5</version>
+            <version>0.1.6</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.github.manevolent</groupId>
             <artifactId>jbot-media</artifactId>
-            <version>0.2.1</version>
+            <version>0.2.3</version>
 			<scope>provided</scope>
         </dependency>
 

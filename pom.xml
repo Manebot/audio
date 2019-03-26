@@ -6,12 +6,20 @@
 
     <groupId>com.github.manevolent</groupId>
     <artifactId>jbot-audio</artifactId>
-    <version>0.1.8</version>
-
-    <repositories>
+    <version>0.1.8-SNAPSHOT</version>
+	
+	<repositories>
         <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
+            <id>public</id>
+            <name>Team Lixo public release repository</name>
+            <url>https://maven.teamlixo.net/repository/public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
         </repository>
         <repository>
             <id>tomp2p.net</id>
@@ -19,6 +27,20 @@
             <url>http://tomp2p.net/dev/mvn/</url>
         </repository>
     </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>public-releases</id>
+            <name>Team Lixo public release repository</name>
+            <url>https://maven.teamlixo.net/repository/public-releases/</url>
+            <uniqueVersion>true</uniqueVersion>
+        </repository>
+        <snapshotRepository>
+            <id>public-snapshots</id>
+            <name>Team Lixo public release snapshots</name>
+            <url>https://maven.teamlixo.net/repository/public-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <build>
         <plugins>
@@ -37,14 +59,14 @@
         <dependency>
             <groupId>com.github.manevolent</groupId>
             <artifactId>jbot-core</artifactId>
-            <version>0.1.6</version>
+            <version>0.1.6-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.github.manevolent</groupId>
             <artifactId>jbot-media</artifactId>
-            <version>0.2.3</version>
+            <version>0.2.3-SNAPSHOT</version>
 			<scope>provided</scope>
         </dependency>
 

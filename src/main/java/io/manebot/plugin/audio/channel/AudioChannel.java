@@ -75,6 +75,12 @@ public abstract class AudioChannel implements MixerChannel.Registrant {
     }
 
     /**
+     * Gets a list of active members in this channel.
+     * @return Channel listener list.
+     */
+    public abstract List<PlatformUser> getMembers();
+
+    /**
      * Gets a list of active listeners in this channel.
      * @return Channel listener list.
      */

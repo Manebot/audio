@@ -10,14 +10,12 @@ import io.manebot.plugin.java.PluginEntry;
 
 public class Entry implements PluginEntry {
     @Override
-    public Plugin instantiate(Plugin.Builder builder) throws PluginLoadException {
-        builder.type(PluginType.DEPENDENCY);
+    public void instantiate(Plugin.Builder builder) throws PluginLoadException {
+        builder.setType(PluginType.DEPENDENCY);
         builder.requirePlugin(ManifestIdentifier.fromString("io.manebot.plugin:media"));
-        builder.instance(AudioPlugin.class, registration -> new AudioPlugin());
-        builder.command("audio", AudioCommand::new);
-        builder.command("mixer", MixerCommand::new);
-
-        return builder.build();
+        builder.setInstance(AudioPlugin.class, registration -> new AudioPlugin());
+        builder.addCommand("audio", AudioCommand::new);
+        builder.addCommand("mixer", MixerCommand::new);
     }
 
     @Override

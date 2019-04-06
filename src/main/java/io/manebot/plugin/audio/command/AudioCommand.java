@@ -80,9 +80,10 @@ public class AudioCommand extends AnnotatedCommandExecutor {
                 builder -> builder
                         .direct(pluginRegistration.getInstance().getInstance(AudioPlugin.class).getChannels())
                         .page(page)
-                        .responder((sender1, o) ->
-                                o.getConversation().getId() + ": " +
-                                        o.getState().name() + (o.isIdle() ? " (idle)" : ""))
+                        .responder((textBuilder, o) -> textBuilder
+                                .append(o.getConversation().getId())
+                                .append(": ")
+                                .append(o.getState().name() + (o.isIdle() ? " (idle)" : "")))
                         .build()
         ).send();
     }
@@ -123,11 +124,12 @@ public class AudioCommand extends AnnotatedCommandExecutor {
         sender.list(
                 AudioPlayer.class,
                 builder -> builder.direct(players).page(page)
-                .responder((sender1, o) -> o.getClass().getSimpleName()
-                        + " date=" + o.getStarted()
-                        + " user=" + o.getOwner().getDisplayName()
-                        + " state=[" + (o.isBlocking() ? "blk" : "nonblk")
-                        + "," + (o.isPlaying() ? "play" : "stop") + "]")
+                .responder((textBuilder, o) -> textBuilder
+                        .append(o.getClass().getSimpleName())
+                        .append(" date=" + o.getStarted())
+                        .append(" user=" + o.getOwner().getDisplayName())
+                        .append(" state=[" + (o.isBlocking() ? "blk" : "nonblk"))
+                        .append("," + (o.isPlaying() ? "play" : "stop") + "]"))
                 .build()
         ).send();
     }

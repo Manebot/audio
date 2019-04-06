@@ -138,11 +138,11 @@ public class MixerCommand extends AnnotatedCommandExecutor {
         sender.list(
                 MixerChannel.class,
                 builder -> builder.direct(new ArrayList<>(mixer.getChannels())).page(page)
-                .responder((x,c) ->
-                        c.getName()
-                                + " (" + c.getClass().getSimpleName() + ", "
+                .responder((textBuilder,c) -> textBuilder
+                        .append(c.getName())
+                        .append(" (" + c.getClass().getSimpleName() + ", "
                                 + (c.isPlaying() ? "playing, " : "")
-                                + c.available() + " av)")
+                                + c.available() + " av)"))
                 .build()
         ).send();
     }
@@ -157,8 +157,9 @@ public class MixerCommand extends AnnotatedCommandExecutor {
         sender.list(
                 Mixer.class,
                 builder -> builder.direct(mixers).page(page)
-                        .responder((x,c) ->
-                                c.getId() + " (" + c.getClass().getSimpleName() + ", "
+                        .responder((textBuilder,c) -> textBuilder
+                                .append(c.getId())
+                                .append(" (" + c.getClass().getSimpleName() + ", "
                                         + (c.isRunning() ? "running, " : "stopped, ")
                                         + (c.isPlaying() ? "playing, " : "paused, ")
                                         + c.getBufferSize() + " smp, "
@@ -166,7 +167,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                                         + c.getSinks().size() + " snk, "
                                         + c.getChannels().size() + " ch, "
                                         + String.format("%.3f", c.getPositionInSeconds()) + " sec"
-                                        + ")"
+                                        + ")")
                         ).build()
         ).send();
     }
@@ -186,16 +187,17 @@ public class MixerCommand extends AnnotatedCommandExecutor {
         sender.list(
                 MixerSink.class,
                 builder -> builder.direct(new ArrayList<>(mixer.getSinks())).page(page)
-                        .responder((x,c) -> c.getClass().getName()
-                                + " ("
-                                + (c.isRunning() ? "running, " : "stopped, ")
-                                + c.getBufferSize() + " smp, "
-                                + c.availableInput() + " av, "
-                                + String.format("%.3f",
+                        .responder((textBuilder,c) -> textBuilder
+                                .append(c.getClass().getName())
+                                .append(" (")
+                                .append(c.isRunning() ? "running, " : "stopped, ")
+                                .append(c.getBufferSize() + " smp, ")
+                                .append(c.availableInput() + " av, ")
+                                .append(String.format("%.3f",
                                     getPositionInSeconds(c.getPosition(), c.getAudioFormat())) + " sec, "
                                 + c.getUnderflows() + " uf, "
-                                + c.getOverflows() + " of"
-                                + ")"
+                                + c.getOverflows() + " of")
+                                .append(")")
                         ).build()
         ).send();
     }

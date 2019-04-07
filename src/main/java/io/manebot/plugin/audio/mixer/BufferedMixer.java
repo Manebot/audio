@@ -1,10 +1,14 @@
 package io.manebot.plugin.audio.mixer;
 
+import io.manebot.plugin.audio.Audio;
 import io.manebot.plugin.audio.mixer.filter.MixerFilter;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,8 +20,11 @@ public class BufferedMixer extends AbstractMixer {
     private boolean filtering = true;
     private long position = 0L;
 
-    public BufferedMixer(String id,MixerRegistrant registrant,
-                         int bufferSize, float audioSampleRate, int audioChannels) {
+    public BufferedMixer(String id,
+                         MixerRegistrant registrant,
+                         int bufferSize,
+                         float audioSampleRate,
+                         int audioChannels) {
         super(id, registrant, bufferSize, audioSampleRate, audioChannels);
 
         this.buffer = new float[bufferSize];
@@ -122,5 +129,87 @@ public class BufferedMixer extends AbstractMixer {
     @Override
     public float getPositionInSeconds() {
         return (float)position / (float)(getAudioChannels() * getAudioSampleRate());
+    }
+
+    public static class Builder implements Mixer.Builder {
+        private final Audio audio;
+        private final String id;
+
+        private final Collection<MixerSink> sinks = new LinkedList<>();
+        private final Collection<Function<Mixer, Collection<MixerFilter>>> filters = new LinkedList<>();
+
+        private MixerRegistrant registrant;
+        private Float bufferTime;
+        private Float sampleRate;
+        private Integer channels;
+
+        public Builder(Audio audio, String id) {
+            this.audio = audio;
+            this.id = id;
+        }
+
+        @Override
+        public Audio getAudio() {
+            return audio;
+        }
+
+        @Override
+        public String getId() {
+            return id;
+        }
+
+        @Override
+        public Builder setRegistrant(MixerRegistrant registrant) {
+            this.registrant = registrant;
+            return this;
+        }
+
+        @Override
+        public Builder setBufferTime(float seconds) {
+            bufferTime = seconds;
+            return this;
+        }
+
+        @Override
+        public Builder setFormat(float sampleRate, int channels) {
+            this.sampleRate = sampleRate;
+            this.channels = channels;
+            return this;
+        }
+
+        @Override
+        public Builder addSink(MixerSink sink) {
+            sinks.add(sink);
+            return this;
+        }
+
+        @Override
+        public Mixer.Builder addFilter(Function<Mixer, Collection<MixerFilter>> filter) {
+            filters.add(filter);
+            return this;
+        }
+
+        public BufferedMixer build() {
+            if (bufferTime == null) throw new IllegalArgumentException("bufferTime", new NullPointerException());
+            if (sampleRate == null) throw new IllegalArgumentException("sampleRate", new NullPointerException());
+            if (channels == null) throw new IllegalArgumentException("channels", new NullPointerException());
+
+            int frames = Math.round(sampleRate * bufferTime);
+            int samples = frames * channels;
+
+            BufferedMixer mixer = new BufferedMixer(id, registrant, samples, sampleRate, channels);
+
+            for (MixerSink sink : sinks)
+                mixer.addSink(sink);
+
+            for (Function<Mixer, Collection<MixerFilter>> filters : filters) {
+                Collection<MixerFilter> stage = filters.apply(mixer);
+                MixerFilter[] arr = new MixerFilter[stage.size()];
+                stage.toArray(arr);
+                mixer.addFilter(arr);
+            }
+
+            return mixer;
+        }
     }
 }

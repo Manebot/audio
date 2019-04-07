@@ -10,13 +10,14 @@ import io.manebot.command.executor.chained.argument.CommandArgumentPage;
 import io.manebot.command.executor.chained.argument.CommandArgumentString;
 import io.manebot.plugin.Plugin;
 import io.manebot.plugin.PluginRegistration;
-import io.manebot.plugin.audio.AudioPlugin;
+import io.manebot.plugin.audio.Audio;
 import io.manebot.plugin.audio.mixer.Mixer;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 import io.manebot.security.Permission;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class MixerCommand extends AnnotatedCommandExecutor {
@@ -33,7 +34,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
             throws CommandExecutionException {
         Mixer mixer = pluginRegistration
                 .getInstance()
-                .getInstance(AudioPlugin.class)
+                .getInstance(Audio.class)
                 .getMixer(sender);
 
         getMixerInfo(sender, mixer);
@@ -55,7 +56,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
             throws CommandExecutionException {
         Mixer mixer = pluginRegistration
                 .getInstance()
-                .getInstance(AudioPlugin.class)
+                .getInstance(Audio.class)
                 .getMixer(sender);
 
         getMixerChannels(sender, mixer, page);
@@ -127,7 +128,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
     }
 
     private Mixer getMixerById(String id) throws CommandArgumentException {
-        return pluginRegistration.getInstance().getInstance(AudioPlugin.class).getMixers().stream()
+        return pluginRegistration.getInstance().getInstance(Audio.class).getMixers().stream()
                 .filter(x -> x.getId().equalsIgnoreCase(id))
                 .findFirst()
                 .orElseThrow(() -> new CommandArgumentException("Mixer not found."));
@@ -149,10 +150,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
 
     private void getMixers(CommandSender sender, int page)
             throws CommandExecutionException {
-        List<Mixer> mixers = pluginRegistration
-                .getInstance()
-                .getInstance(AudioPlugin.class)
-                .getMixers();
+        List<Mixer> mixers = pluginRegistration.getInstance().getInstance(Audio.class).getMixers();
 
         sender.list(
                 Mixer.class,
@@ -176,7 +174,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
             throws CommandExecutionException {
         Mixer mixer = pluginRegistration
                 .getInstance()
-                .getInstance(AudioPlugin.class)
+                .getInstance(Audio.class)
                 .getMixer(sender);
 
         getMixerSinks(sender, mixer, page);
@@ -209,7 +207,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
     private void getMixerInfo(CommandSender sender) throws CommandExecutionException {
         Mixer mixer = pluginRegistration
                 .getInstance()
-                .getInstance(AudioPlugin.class)
+                .getInstance(Audio.class)
                 .getMixer(sender);
 
         getMixerInfo(sender, mixer);

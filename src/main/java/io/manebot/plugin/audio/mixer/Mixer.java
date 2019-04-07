@@ -1,11 +1,14 @@
 package io.manebot.plugin.audio.mixer;
 
+import io.manebot.plugin.audio.Audio;
 import io.manebot.plugin.audio.mixer.filter.MixerFilter;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Represents the scaffolding the mixer system in the bot.
@@ -106,4 +109,85 @@ public interface Mixer {
      * @return Channel count.
      */
     int getAudioChannels();
+
+    interface Builder {
+
+        /**
+         * Gets the Audio instance for this builder.
+         * @return Audio instance.
+         */
+        Audio getAudio();
+
+        /**
+         * Gets the ID of the mixer being created.
+         * @return Mixer ID.
+         */
+        String getId();
+
+        /**
+         * Sets the registrant of this mixer.
+         * @param registrant registrant to set.
+         * @return Builder for continuation.
+         */
+        Builder setRegistrant(MixerRegistrant registrant);
+
+        /**
+         * Sets the buffer time for the mixer.
+         * @param seconds seconds.
+         * @return Builder for continuation.
+         */
+        Builder setBufferTime(float seconds);
+
+        /**
+         * Sets the native format of this mixer.
+         * @param sampleRate sample rate.
+         * @param channels channels.
+         * @return Builder for continuation.
+         */
+        Builder setFormat(float sampleRate, int channels);
+
+        /**
+         * Adds a sink to this mixer.
+         * @param sink mixer sink to add.
+         * @return Builder for continuation.
+         */
+        Builder addSink(MixerSink sink);
+
+        /**
+         * Adds default filters
+         * @return Builder for continuation.
+         */
+        default Builder addDefaultFilters() {
+            addFilters(getAudio().getDefaultFilters());
+            return this;
+        }
+
+        /**
+         * Adds a filter to the mixer.
+         * @param filter filter function.
+         * @return Builder for continuation.
+         */
+        Builder addFilter(Function<Mixer, Collection<MixerFilter>> filter);
+
+        /**
+         * Adds a collection of filters to the mixer.
+         * @param filters filter function collection.
+         * @return Builder for continuation.
+         */
+        default Builder addFilters(Function<Mixer, Collection<MixerFilter>>... filters) {
+            return addFilters(Arrays.asList(filters));
+        }
+
+        /**
+         * Adds a collection of filters to the mixer.
+         * @param filters filter function collection.
+         * @return Builder for continuation.
+         */
+        default Builder addFilters(Collection<Function<Mixer, Collection<MixerFilter>>> filters) {
+            Builder builder = this;
+            for (Function<Mixer, Collection<MixerFilter>> filter : filters)
+                builder = builder.addFilter(filter);
+            return builder;
+        }
+    }
 }

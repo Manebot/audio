@@ -136,7 +136,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
 
     private void getMixerChannels(CommandSender sender, Mixer mixer, int page)
             throws CommandExecutionException {
-        sender.list(
+        sender.sendList(
                 MixerChannel.class,
                 builder -> builder.direct(new ArrayList<>(mixer.getChannels())).page(page)
                 .responder((textBuilder,c) -> textBuilder
@@ -144,15 +144,14 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                         .append(" (" + c.getClass().getSimpleName() + ", "
                                 + (c.isPlaying() ? "playing, " : "")
                                 + c.available() + " av)"))
-                .build()
-        ).send();
+        );
     }
 
     private void getMixers(CommandSender sender, int page)
             throws CommandExecutionException {
         List<Mixer> mixers = pluginRegistration.getInstance().getInstance(Audio.class).getMixers();
 
-        sender.list(
+        sender.sendList(
                 Mixer.class,
                 builder -> builder.direct(mixers).page(page)
                         .responder((textBuilder,c) -> textBuilder
@@ -166,8 +165,8 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                                         + c.getChannels().size() + " ch, "
                                         + String.format("%.3f", c.getPositionInSeconds()) + " sec"
                                         + ")")
-                        ).build()
-        ).send();
+                        )
+        );
     }
 
     private void getMixerSinks(CommandSender sender, int page)
@@ -182,7 +181,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
 
     private void getMixerSinks(CommandSender sender, Mixer mixer, int page)
             throws CommandExecutionException {
-        sender.list(
+        sender.sendList(
                 MixerSink.class,
                 builder -> builder.direct(new ArrayList<>(mixer.getSinks())).page(page)
                         .responder((textBuilder,c) -> textBuilder
@@ -196,8 +195,8 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                                 + c.getUnderflows() + " uf, "
                                 + c.getOverflows() + " of")
                                 .append(")")
-                        ).build()
-        ).send();
+                        )
+        );
     }
 
     private double getPositionInSeconds(long position, javax.sound.sampled.AudioFormat format) {
@@ -214,13 +213,12 @@ public class MixerCommand extends AnnotatedCommandExecutor {
     }
 
     private void getMixerInfo(CommandSender sender, Mixer mixer) throws CommandExecutionException {
-        sender.details(
+        sender.sendDetails(
                 builder -> builder.name("Mixer").key(mixer.getId())
                         .item("Instance", mixer.getClass().getSimpleName())
                         .item("Played", String.format("%.3f", mixer.getPositionInSeconds())
                                 + " second(s), " + mixer.available() + " av")
                         .item("Buffer size", mixer.getBufferSize() + " sample(s)")
-                        .build()
-        ).send();
+        );
     }
 }

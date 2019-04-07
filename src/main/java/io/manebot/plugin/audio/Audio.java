@@ -69,6 +69,8 @@ public class Audio implements PluginReference {
 
         registrationMap.put(platform, registration);
 
+        plugin.getLogger().info("Registered audio subsystem connection for " + platform.getId() + ".");
+
         return registration;
     }
 
@@ -209,7 +211,7 @@ public class Audio implements PluginReference {
 
     public Mixer createMixer(String id, Consumer<Mixer.Builder> consumer) {
         BufferedMixer.Builder builder = new BufferedMixer.Builder(this, id);
-        builder.setBufferTime(bufferTime);
+        builder.setBufferTime((float)bufferTime / 1000f);
         consumer.accept(builder);
         return builder.build();
     }

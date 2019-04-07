@@ -4,14 +4,12 @@ import io.manebot.command.CommandSender;
 import io.manebot.command.exception.CommandArgumentException;
 import io.manebot.command.exception.CommandExecutionException;
 import io.manebot.command.executor.chained.AnnotatedCommandExecutor;
-import io.manebot.command.executor.chained.argument.CommandArgumentLabel;
-import io.manebot.command.executor.chained.argument.CommandArgumentPage;
-import io.manebot.command.executor.chained.argument.CommandArgumentString;
-import io.manebot.command.executor.chained.argument.CommandArgumentSwitch;
+import io.manebot.command.executor.chained.argument.*;
 import io.manebot.conversation.Conversation;
 import io.manebot.plugin.Plugin;
 import io.manebot.plugin.PluginRegistration;
 import io.manebot.plugin.audio.Audio;
+import io.manebot.plugin.audio.api.AudioRegistration;
 import io.manebot.plugin.audio.channel.AudioChannel;
 import io.manebot.plugin.audio.mixer.Mixer;
 import io.manebot.plugin.audio.player.AudioPlayer;
@@ -75,7 +73,7 @@ public class AudioCommand extends AnnotatedCommandExecutor {
                          @CommandArgumentString.Argument(label = "conversation") String conversation,
                          @CommandArgumentPage.Argument() int page)
             throws CommandExecutionException {
-        sender.list(
+        sender.sendList(
                 AudioChannel.class,
                 builder -> builder
                         .direct(pluginRegistration.getInstance().getInstance(Audio.class).getChannels())
@@ -84,8 +82,7 @@ public class AudioCommand extends AnnotatedCommandExecutor {
                                 .append(o.getConversation().getId())
                                 .append(": ")
                                 .append(o.getState().name() + (o.isIdle() ? " (idle)" : "")))
-                        .build()
-        ).send();
+        );
     }
 
     @Command(description = "Manages mixer audio filter", permission = "audio.filter.change")
@@ -121,7 +118,7 @@ public class AudioCommand extends AnnotatedCommandExecutor {
         List<AudioPlayer> players = new ArrayList<>(channel.getPlayers());
         players.sort((player, t1) -> -player.getStarted().compareTo(t1.getStarted()));
 
-        sender.list(
+        sender.sendList(
                 AudioPlayer.class,
                 builder -> builder.direct(players).page(page)
                 .responder((textBuilder, o) -> textBuilder
@@ -130,32 +127,38 @@ public class AudioCommand extends AnnotatedCommandExecutor {
                         .append(" user=" + o.getOwner().getDisplayName())
                         .append(" state=[" + (o.isBlocking() ? "blk" : "nonblk"))
                         .append("," + (o.isPlaying() ? "play" : "stop") + "]"))
-                .build()
-        ).send();
+        );
     }
 
 
     private void getAudioInfo(CommandSender sender)
             throws CommandExecutionException {
-        AudioChannel channel = pluginRegistration.getInstance().getInstance(Audio.class).getChannel(sender);
-        getAudioInfo(sender, channel);
+        getAudioInfo(sender, sender.getConversation());
     }
 
     private void getAudioInfo(CommandSender sender, Conversation conversation)
             throws CommandExecutionException {
-        AudioChannel channel = pluginRegistration.getInstance().getInstance(Audio.class).getChannel(conversation);
+        Audio audio = pluginRegistration.getInstance().getInstance(Audio.class);
+        if (audio == null)
+            throw new CommandArgumentException("Audio subsystem is not initialized.");
+
+        AudioRegistration registration = audio.getRegistration(conversation.getPlatform());
+        if (registration == null)
+            throw new CommandArgumentException("Platform is not registered to audio subsystem.");
+
+        AudioChannel channel = registration.getConnection().getChannel(conversation.getChat());
         if (channel == null)
-            throw new CommandArgumentException("Conversation does not have an associated audio channel");
+            throw new CommandArgumentException("Chat does not have an associated audio channel.");
 
         getAudioInfo(sender, channel);
     }
 
     private void getAudioInfo(CommandSender sender, AudioChannel channel)
             throws CommandExecutionException {
-        if (channel == null) throw new CommandArgumentException("Audio channel not found");
+        if (channel == null) throw new CommandArgumentException("Audio channel not found.");
 
         List<UserAssociation> listeners = channel.getRegisteredListeners();
-        sender.details(
+        sender.sendDetails(
                 builder -> builder.name("Audio channel").key(channel.getId())
                         .item("Instance", channel.getClass().getSimpleName())
                         .item("Channel state", channel.getState().name() +  (channel.isIdle() ? " (idle)" : ""))
@@ -164,7 +167,6 @@ public class AudioCommand extends AnnotatedCommandExecutor {
                         .item("Members", listeners.stream().map(x ->
                                 x.getUser().getDisplayName() + (channel.isSpeaking(x) ? " (speaking)" :"")
                         ).collect(Collectors.toList()))
-                        .build()
-        ).send();
+        );
     }
 }

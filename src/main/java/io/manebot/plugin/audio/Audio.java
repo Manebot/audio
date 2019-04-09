@@ -65,11 +65,10 @@ public class Audio implements PluginReference {
         consumer.accept(builder);
 
         DefaultAudioRegistration registration = builder.build();
-        registration.getConnection().connect();
+
+        if (plugin.isEnabled()) registration.getConnection().connect();
 
         registrationMap.put(platform, registration);
-
-        plugin.getLogger().info("Registered audio subsystem connection for " + platform.getId() + ".");
 
         return registration;
     }

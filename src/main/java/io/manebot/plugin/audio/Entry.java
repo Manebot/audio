@@ -13,7 +13,7 @@ public class Entry implements PluginEntry {
     public void instantiate(Plugin.Builder builder) throws PluginLoadException {
         builder.setType(PluginType.DEPENDENCY);
         builder.requirePlugin(ManifestIdentifier.fromString("io.manebot.plugin:media"));
-        builder.setInstance(Audio.class, registration -> new Audio(registration.getPlugin()));
+        builder.setInstance(Audio.class, Audio::new);
         builder.addCommand("audio", AudioCommand::new);
         builder.addCommand("mixer", MixerCommand::new);
     }

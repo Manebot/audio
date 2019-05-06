@@ -95,16 +95,21 @@ public abstract class AbstractAudioConnection implements AudioConnection {
     }
 
     @Override
-    public void registerChannel(AudioChannel channel) {
+    public AudioChannel registerChannel(AudioChannel channel) {
         if (this.channels.add(channel)) {
-            channel.getRegistrant().onChannelRegistered(channel);
+            if (channel.getRegistrant() != null)
+                channel.getRegistrant().onChannelRegistered(channel);
         }
+
+        return channel;
     }
 
     @Override
     public boolean unregisterChannel(AudioChannel channel) {
         if (this.channels.remove(channel)) {
-            channel.getRegistrant().onChannelUnregistered(channel);
+            if (channel.getRegistrant() != null)
+                channel.getRegistrant().onChannelUnregistered(channel);
+
             channel.stopAll();
 
             return true;
@@ -112,7 +117,7 @@ public abstract class AbstractAudioConnection implements AudioConnection {
     }
 
     @Override
-    public void registerMixer(Mixer mixer) {
+    public Mixer registerMixer(Mixer mixer) {
         synchronized (audioLock) {
             if (mixers.stream().anyMatch(x -> x.getId().equalsIgnoreCase(mixer.getId())))
                 throw new IllegalArgumentException("mixer", new IllegalStateException(mixer.getId()));
@@ -121,18 +126,20 @@ public abstract class AbstractAudioConnection implements AudioConnection {
             audioLock.notifyAll();
         }
 
-        mixer.getRegistrant().onMixerRegistered(mixer);
+        if (mixer.getRegistrant() != null)
+            mixer.getRegistrant().onMixerRegistered(mixer);
+
+        return mixer;
     }
 
     @Override
     public boolean unregisterMixer(Mixer mixer) {
         synchronized (audioLock) {
             if (mixers.remove(mixer)) {
-                mixer.getRegistrant().onMixerUnregistered(mixer);
+                if (mixer.getRegistrant() != null)
+                    mixer.getRegistrant().onMixerUnregistered(mixer);
 
-                // Make sure they cleaned everything up
                 mixer.empty();
-
                 return true;
             } else
                 return false;

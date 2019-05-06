@@ -54,11 +54,11 @@ public interface AudioConnection {
      */
     void disconnect();
 
-    void registerChannel(AudioChannel channel);
+    AudioChannel registerChannel(AudioChannel channel);
 
     boolean unregisterChannel(AudioChannel channel);
 
-    void registerMixer(Mixer mixer);
+    Mixer registerMixer(Mixer mixer);
 
     boolean unregisterMixer(Mixer mixer);
 }

@@ -79,6 +79,10 @@ public class Audio implements PluginReference {
         return registration;
     }
 
+    public List<AudioRegistration> getRegistrations() {
+        return Collections.unmodifiableList(new ArrayList<>(registrationMap.values()));
+    }
+
     public ResamplerFactory getResamplerFactory() {
         return resamplerFactory;
     }

@@ -6,6 +6,7 @@ import io.manebot.command.exception.CommandExecutionException;
 import io.manebot.command.executor.chained.AnnotatedCommandExecutor;
 import io.manebot.command.executor.chained.argument.*;
 import io.manebot.conversation.Conversation;
+import io.manebot.platform.Platform;
 import io.manebot.plugin.Plugin;
 import io.manebot.plugin.PluginRegistration;
 import io.manebot.plugin.audio.Audio;
@@ -29,6 +30,50 @@ public class AudioCommand extends AnnotatedCommandExecutor {
     @Override
     public String getDescription() {
         return "Manages audio subsystem";
+    }
+
+    @Command(description = "Gets platforms registered in the audio system", permission = "audio.platform.list")
+    public void platforms(CommandSender sender,
+                          @CommandArgumentLabel.Argument(label = "platform") String platform,
+                          @CommandArgumentLabel.Argument(label = "list") String list,
+                          @CommandArgumentPage.Argument() int page)
+            throws CommandExecutionException {
+        Audio audio = pluginRegistration.getInstance().getInstance(Audio.class);
+        sender.sendList(
+                AudioRegistration.class,
+                builder -> builder
+                        .direct(audio.getRegistrations())
+                        .page(page)
+                        .responder((textBuilder, o) -> textBuilder
+                                .append(o.getPlatform().getId())
+                                .append(" (via ")
+                                .append(o.getPlugin().getName())
+                                .append(")"))
+        );
+    }
+
+    @Command(description = "Gets registrered platform info", permission = "audio.platform.info")
+    public void platformInfo(CommandSender sender,
+                             @CommandArgumentLabel.Argument(label = "platform") String platformLabel,
+                             @CommandArgumentLabel.Argument(label = "info") String list,
+                             @CommandArgumentString.Argument(label = "name") String platformId)
+            throws CommandExecutionException {
+        Platform platform = pluginRegistration.getBot().getPlatformById(platformId);
+        if (platform == null) throw new CommandArgumentException("Platform not found.");
+
+        AudioRegistration registration =
+                pluginRegistration.getInstance().getInstance(Audio.class).getRegistration(platform);
+
+        if (registration == null) throw new CommandArgumentException("Platform not registered in audio system.");
+
+        sender.sendDetails(
+                builder -> builder.name("Platform").key(platform.getId())
+                        .item("Plugin", platform.getPlugin().getName())
+                        .item("Connected", Boolean.toString(registration.getConnection().isConnected()))
+                        .item("Channels", registration.getConnection().getChannels())
+                        .item("Mixers", registration.getConnection().getMixers())
+        );
+
     }
 
     @Command(description = "Gets player information for the current conversation", permission = "audio.player.list")

@@ -37,6 +37,8 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                 .getInstance(Audio.class)
                 .getMixer(sender);
 
+        if (mixer == null) throw new CommandArgumentException("There is no mixer associated with this chat.");
+
         getMixerInfo(sender, mixer);
     }
 

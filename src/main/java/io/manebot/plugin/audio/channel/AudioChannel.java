@@ -103,6 +103,10 @@ public abstract class AudioChannel implements MixerChannel.Registrant {
      */
     public abstract Conversation getConversation();
 
+    public final boolean isObtainedByCurrentThread() {
+        return lock.isHeldByCurrentThread();
+    }
+
     public final boolean isObtained() {
         if (lock.tryLock()) {
             try {

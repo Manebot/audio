@@ -70,8 +70,10 @@ public class AudioCommand extends AnnotatedCommandExecutor {
                 builder -> builder.name("Platform").key(platform.getId())
                         .item("Plugin", platform.getPlugin().getName())
                         .item("Connected", Boolean.toString(registration.getConnection().isConnected()))
-                        .item("Channels", registration.getConnection().getChannels())
-                        .item("Mixers", registration.getConnection().getMixers())
+                        .item("Channels", registration.getConnection().getChannels().stream()
+                                .map(AudioChannel::getId).collect(Collectors.toList()))
+                        .item("Mixers", registration.getConnection().getMixers().stream()
+                                .map(Mixer::getId).collect(Collectors.toList()))
         );
 
     }

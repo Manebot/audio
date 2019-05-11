@@ -172,9 +172,18 @@ public abstract class AudioChannel implements MixerChannel.Registrant {
     }
 
     protected final Ownership obtain(UserAssociation association) {
-        Ownership o = new Ownership(association);
-        lock.lock();
-        return o;
+        if (lock.isHeldByCurrentThread()) {
+            return new Ownership(association) {
+                @Override
+                public void close() throws Exception {
+                    fireListenerAction(x -> x.onOwnershipReleased(AudioChannel.this, association));
+                }
+            };
+        } else {
+            Ownership o = new Ownership(association);
+            lock.lock();
+            return o;
+        }
     }
 
     /**

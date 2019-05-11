@@ -2,6 +2,7 @@ package io.manebot.plugin.audio.player;
 
 import io.manebot.property.Property;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -77,7 +78,13 @@ public class TransitionedAudioPlayer extends AudioPlayer {
     public int read(float[] floats, int offs, int i) throws IOException {
         if (i <= 0) return 0;
 
-        int read = player.read(floats, 0, i);
+        int read;
+
+        try {
+            read = player.read(floats, 0, i);
+        } catch (EOFException ex) {
+            read = -1;
+        }
 
         if (read <= 0) {
             setState(State.CLOSED);

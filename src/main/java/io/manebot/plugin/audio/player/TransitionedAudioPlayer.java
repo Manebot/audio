@@ -161,7 +161,7 @@ public class TransitionedAudioPlayer extends AudioPlayer {
                     return 1f; // Still normal
             case FADE_OUT:
                 f = 1f - ((float)(Math.pow(timeInSeconds - closeTimeInSeconds, 0.5d) /
-                                    Math.pow(transitionTimeInSeconds, 0.5d)));
+                        Math.pow(transitionTimeInSeconds, 0.5d)));
 
                 // Handle cancellation by finding if the audio is too quiet to be heard.
                 if (f <= (1f / Math.pow(2D, getOutputFormat().getSampleSizeInBits()))) {

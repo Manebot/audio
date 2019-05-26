@@ -88,34 +88,34 @@ public class BufferedMixer extends AbstractMixer {
             }
 
             // Manipulate audio based on filters
-            if (filtering) {
-                int channels = getAudioChannels();
-                int samplesPerChannel = len / channels;
-                for (int ch = 0; ch < channels; ch++) {
-                    // Copy in buffer for channel
-                    for (int smp = 0; smp < samplesPerChannel; smp++) {
-                        filterBuffer[smp] = buffer[smp * channels];
-                    }
-
-                    // Filter the filter buffer
-                    int finalCh = ch; // hack
-                    getFilters().stream().map(x -> x.get(finalCh)).forEach(filter -> {
-                        filter.process(filterBuffer, 0, samplesPerChannel);
-                    });
-
-                    // Copy back in buffer for channel
-                    for (int smp = 0; smp < samplesPerChannel; smp++) {
-                        buffer[smp * channels] = filterBuffer[smp];
-                    }
+            int channels = getAudioChannels();
+            int samplesPerChannel = len / channels;
+            for (int ch = 0; ch < channels; ch++) {
+                // Copy in buffer for channel
+                for (int smp = 0; smp < samplesPerChannel; smp++) {
+                    filterBuffer[smp] = buffer[(smp * channels) + ch];
                 }
 
-                // Write to sinks (only those that are running and can accept these samples, though)
-                // Note that available() will limit "len" to the sink's availability
-                for (MixerSink sink : getSinks())
-                    if (sink.isRunning() && sink.availableInput() >= len) sink.write(buffer, len);
+                // Filter the filter buffer
+                if (filtering) {
+                    int finalCh = ch; // hack
+                    getFilters().stream()
+                            .map(x -> x.get(finalCh))
+                            .forEach(filter -> filter.process(filterBuffer, 0, samplesPerChannel));
+                }
 
-                position += len;
+                // Copy back in buffer for channel
+                for (int smp = 0; smp < samplesPerChannel; smp++) {
+                    buffer[(smp * channels) + ch] = filterBuffer[smp];
+                }
             }
+
+            // Write to sinks (only those that are running and can accept these samples, though)
+            // Note that available() will limit "len" to the sink's availability
+            for (MixerSink sink : getSinks())
+                if (sink.isRunning() && sink.availableInput() >= len) sink.write(buffer, len);
+
+            position += len;
         }
 
         // Kill the mixer, ensure it stops if necessary after we've processed all the buffers/channels
@@ -175,6 +175,16 @@ public class BufferedMixer extends AbstractMixer {
             this.sampleRate = sampleRate;
             this.channels = channels;
             return this;
+        }
+
+        @Override
+        public float getSampleRate() {
+            return sampleRate;
+        }
+
+        @Override
+        public int getChannels() {
+            return channels;
         }
 
         @Override

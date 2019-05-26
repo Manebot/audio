@@ -4,7 +4,7 @@ import io.manebot.plugin.Plugin;
 import io.manebot.plugin.PluginException;
 
 public class OpusParameters {
-    private final int opusFrameRate;
+    private final int opusFrameTime;
     private final int opusBitrate;
     private final int opusComplexity;
     private final int opusPacketLossPercent;
@@ -12,10 +12,10 @@ public class OpusParameters {
     private final boolean opusFec;
     private final boolean opusMusic;
 
-    public OpusParameters(int opusFrameRate, int opusBitrate,
+    public OpusParameters(int opusFrameTime, int opusBitrate,
                           int opusComplexity, int opusPacketLossPercent,
                           boolean opusVbr, boolean opusFec, boolean opusMusic) {
-        this.opusFrameRate = opusFrameRate;
+        this.opusFrameTime = opusFrameTime;
         this.opusBitrate = opusBitrate;
         this.opusComplexity = opusComplexity;
         this.opusPacketLossPercent = opusPacketLossPercent;
@@ -25,7 +25,7 @@ public class OpusParameters {
     }
 
     public int getOpusFrameTime() {
-        return 1000 / opusFrameRate;
+        return opusFrameTime;
     }
 
     public int getOpusBitrate() {

@@ -6,7 +6,9 @@ import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public abstract class AbstractMixer implements Mixer {
     private final String id;
@@ -18,7 +20,7 @@ public abstract class AbstractMixer implements Mixer {
     private final MixerRegistrant registrant;
 
     private final List<MixerSink> sinks = Collections.synchronizedList(new LinkedList<>());
-    private final List<MixerChannel> channels = Collections.synchronizedList(new LinkedList<>());
+    private final List<FutureChannel> channels = Collections.synchronizedList(new LinkedList<>());
     private final List<List<MixerFilter>> filters = Collections.synchronizedList(new LinkedList<>());
 
     private final Object channelLock = new Object();
@@ -82,29 +84,33 @@ public abstract class AbstractMixer implements Mixer {
 
     @Override
     public Collection<MixerChannel> getChannels() {
-        return Collections.unmodifiableCollection(channels);
+        return Collections.unmodifiableCollection(
+                channels.stream().map(FutureChannel::getChannel).collect(Collectors.toList())
+        );
     }
 
     @Override
-    public boolean addChannel(MixerChannel channel) {
+    public CompletableFuture<MixerChannel> addChannel(MixerChannel channel) {
+        FutureChannel futureChannel = new FutureChannel(channel, new CompletableFuture<>());
+
+        if (channel.getSampleRate() != getAudioSampleRate() || channel.getChannels() != getAudioChannels())
+            throw new IllegalArgumentException("format mismatch");
+
+        boolean added;
+
         synchronized (channelLock) {
-            boolean added;
+            added = channels.add(futureChannel);
 
-            if (channel.getSampleRate() != getAudioSampleRate() || channel.getChannels() != getAudioChannels())
-                throw new IllegalArgumentException("format mismatch");
-
-            synchronized (channelLock) {
-                added = channels.add(channel);
-            }
+            if (!added) throw new IllegalStateException();
 
             if (!isPlaying()) setRunning(true);
 
             if (added) {
-                // Events...
+                //TODO: Events...
             }
-
-            return added;
         }
+
+        return futureChannel.getFuture();
     }
 
     @Override
@@ -113,7 +119,16 @@ public abstract class AbstractMixer implements Mixer {
 
         synchronized (channelLock) {
             boolean wasPlaying = isPlaying();
-            removed = channels.remove(channel);
+            Collection<FutureChannel> futureChannels = channels.stream()
+                    .filter((existingChannel) -> existingChannel.getChannel() == channel)
+                    .collect(Collectors.toList());
+
+            futureChannels.forEach(futureChannel -> {
+                if (channels.remove(futureChannel))
+                    futureChannel.getFuture().complete(futureChannel.getChannel());
+            });
+
+            removed = futureChannels.size() > 0;
             stopped = removed && wasPlaying && !isPlaying();
         }
 
@@ -192,10 +207,8 @@ public abstract class AbstractMixer implements Mixer {
     @Override
     public boolean setRunning(boolean running) {
         if (running) {
-            Logger.getGlobal().info("Starting mixer...");
             return getSinks().stream().filter(x -> !x.isRunning()).allMatch(MixerSink::start);
         } else {
-            Logger.getGlobal().info("Stopping mixer...");
             boolean stopped = getSinks().stream().filter(MixerSink::isRunning).allMatch(MixerSink::stop);
 
             // If stopped, reset all filters.
@@ -213,5 +226,23 @@ public abstract class AbstractMixer implements Mixer {
     @Override
     public String getId() {
         return id;
+    }
+
+    private class FutureChannel {
+        private final MixerChannel channel;
+        private final CompletableFuture<MixerChannel> future;
+
+        private FutureChannel(MixerChannel channel, CompletableFuture<MixerChannel> future) {
+            this.channel = channel;
+            this.future = future;
+        }
+
+        public MixerChannel getChannel() {
+            return channel;
+        }
+
+        public CompletableFuture<MixerChannel> getFuture() {
+            return future;
+        }
     }
 }

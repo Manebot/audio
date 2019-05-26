@@ -120,7 +120,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                 throw new CommandArgumentException("Mixer volume cannot be higher than 100000%.");
         }
 
-        sender.getUser().getEntity().getPropery("Mixer:Volume").set(value / 100D);
+        sender.getUser().getEntity().getProperty("Mixer:Volume").set(value / 100D);
         sender.sendMessage("Mixer volume set to " + String.format("%.2f", value) + "%.");
     }
 

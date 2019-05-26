@@ -8,6 +8,8 @@ import io.manebot.plugin.audio.mixer.output.MixerSink;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 
 /**
@@ -40,7 +42,7 @@ public interface Mixer {
      * @return Mixer channels
      */
     Collection<MixerChannel> getChannels();
-    boolean addChannel(MixerChannel channel);
+    CompletableFuture<MixerChannel> addChannel(MixerChannel channel);
     boolean removeChannel(MixerChannel channel);
 
     /**
@@ -147,6 +149,18 @@ public interface Mixer {
         Builder setFormat(float sampleRate, int channels);
 
         /**
+         * Gets the sample rate of this mixer.
+         * @return sample rate.
+         */
+        float getSampleRate();
+
+        /**
+         * Gets the channel count of this mixer.
+         * @return channel count.
+         */
+        int getChannels();
+
+        /**
          * Adds a sink to this mixer.
          * @param sink mixer sink to add.
          * @return Builder for continuation.
@@ -158,7 +172,7 @@ public interface Mixer {
          * @return Builder for continuation.
          */
         default Builder addDefaultFilters() {
-            addFilters(getAudio().getDefaultFilters());
+            addFilters(getAudio().getDefaultFilters(getChannels()));
             return this;
         }
 

@@ -2,16 +2,16 @@ package io.manebot.plugin.audio.mixer.filter.type;
 
 import io.manebot.plugin.audio.mixer.filter.MixerFilter;
 
-public class SoftClipFilter implements MixerFilter {
+public class FilterSoftClip implements MixerFilter {
     private final int channels;
     private final float[] states;
 
-    public SoftClipFilter(int channels) {
+    public FilterSoftClip(int channels) {
         this.channels = channels;
         this.states = new float[channels];
     }
 
-    public SoftClipFilter() {
+    public FilterSoftClip() {
         this(1);
     }
 

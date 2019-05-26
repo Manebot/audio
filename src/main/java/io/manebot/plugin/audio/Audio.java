@@ -2,6 +2,8 @@ package io.manebot.plugin.audio;
 
 import io.manebot.chat.Chat;
 import io.manebot.command.CommandSender;
+import io.manebot.command.exception.CommandArgumentException;
+import io.manebot.command.exception.CommandExecutionException;
 import io.manebot.conversation.Conversation;
 import io.manebot.platform.Platform;
 import io.manebot.plugin.Plugin;
@@ -22,6 +24,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Audio implements PluginReference {
     private final Plugin plugin;
@@ -58,6 +61,18 @@ public class Audio implements PluginReference {
     public void unload(Plugin.Future future) {
         for (AudioRegistration registration : new ArrayList<>(registrationMap.values()))
             registration.getConnection().disconnect();
+    }
+
+    public AudioChannel requireListening(CommandSender sender) throws CommandExecutionException {
+        AudioChannel channel = getChannel(sender);
+
+        if (channel == null)
+            throw new CommandExecutionException("There is no audio channel associated with this conversation.");
+
+        if (!channel.getListeners().contains(sender.getPlatformUser()))
+            throw new CommandArgumentException("You are not listening to this channel.");
+
+        return channel;
     }
 
     public AudioRegistration createRegistration(Platform platform, Consumer<AudioRegistration.Builder> consumer) {
@@ -139,19 +154,20 @@ public class Audio implements PluginReference {
                 .collect(Collectors.toList());
     }
 
-    public Collection<Function<Mixer, Collection<MixerFilter>>> getDefaultFilters() {
+    public Collection<Function<Mixer, Collection<MixerFilter>>> getDefaultFilters(int channels) {
         return Arrays.asList(
-                (Function<Mixer, Collection<MixerFilter>>) mixer -> {
+                mixer -> {
                     // Compress
                     float compressorTheshold = Float.parseFloat(plugin.getProperty("compressorTheshold", "1"));
                     float compressorRatio = Float.parseFloat(plugin.getProperty("compressorRatio", "1"));
                     float compressorKnee = Float.parseFloat(plugin.getProperty("compressorKnee", "0"));
-                    return Arrays.asList(
-                            (MixerFilter) new FilterCompressor(compressorTheshold, compressorRatio, compressorKnee),
-                            (MixerFilter) new FilterCompressor(compressorTheshold, compressorRatio, compressorKnee)
-                    );
+                    return IntStream.range(0, channels)
+                            .mapToObj((i) -> (MixerFilter) new FilterCompressor(
+                                    compressorTheshold, compressorRatio, compressorKnee
+                            ))
+                            .collect(Collectors.toList());
                 },
-                (Function<Mixer, Collection<MixerFilter>>) mixer -> {
+                mixer -> {
                     float subBassFrequency = Float.parseFloat(plugin.getProperty("subBassFrequency", "65.0"));
                     float subBassResonance = Float.parseFloat(plugin.getProperty("subBassResonance", "1"));
                     float subBassWet = Float.parseFloat(plugin.getProperty("subBassWet", "0.35"));
@@ -162,12 +178,11 @@ public class Audio implements PluginReference {
                     subBassFilter.setFrequency(subBassFrequency);
                     subBassFilter.setResonance(subBassResonance);
 
-                    return Arrays.asList(
-                            new FilterBandPass(subBassFilter, subBassWet, subBassDry),
-                            new FilterBandPass(subBassFilter, subBassWet, subBassDry)
-                    );
+                    return IntStream.range(0, channels)
+                            .mapToObj((i) -> (MixerFilter) new FilterBandPass(subBassFilter, subBassWet, subBassDry))
+                            .collect(Collectors.toList());
                 },
-                (Function<Mixer, Collection<MixerFilter>>) mixer -> {
+                mixer -> {
                     float bassFrequency = Float.parseFloat(plugin.getProperty("bassFrequency", "120.0"));
                     float bassResonance = Float.parseFloat(plugin.getProperty("bassResonance", "1"));
                     float bassWet = Float.parseFloat(plugin.getProperty("bassWet", "0.5"));
@@ -178,12 +193,11 @@ public class Audio implements PluginReference {
                     bassFilter.setFrequency(bassFrequency);
                     bassFilter.setResonance(bassResonance);
 
-                    return Arrays.asList(
-                            new FilterBandPass(bassFilter, bassWet, bassDry),
-                            new FilterBandPass(bassFilter, bassWet, bassDry)
-                    );
+                    return IntStream.range(0, channels)
+                            .mapToObj((i) -> (MixerFilter) new FilterBandPass(bassFilter, bassWet, bassDry))
+                            .collect(Collectors.toList());
                 },
-                (Function<Mixer, Collection<MixerFilter>>) mixer -> {
+                mixer -> {
                     float midFrequency = Float.parseFloat(plugin.getProperty("midFrequency", "2500"));
                     float midResonance = Float.parseFloat(plugin.getProperty("midResonance", "1"));
                     float midWet = Float.parseFloat(plugin.getProperty("midWet", "0.15"));
@@ -192,23 +206,26 @@ public class Audio implements PluginReference {
                     midFilter.setFilterType(SoftFilter.FILTERTYPE_BP12);
                     midFilter.setFrequency(midFrequency);
                     midFilter.setResonance(midResonance);
-                    return Arrays.asList(
-                            new FilterBandPass(midFilter, midWet, midDry),
-                            new FilterBandPass(midFilter, midWet, midDry)
-                    );
+
+                    return IntStream.range(0, channels)
+                            .mapToObj((i) -> (MixerFilter) new FilterBandPass(midFilter, midWet, midDry))
+                            .collect(Collectors.toList());
                 },
-                (Function<Mixer, Collection<MixerFilter>>) mixer -> {
+                mixer -> {
                     float limiterThreshold = Float.parseFloat(plugin.getProperty("limiterThreshold", "0.7"));
                     float limiterAttack = Float.parseFloat(plugin.getProperty("limiterAttack", "1"));
                     float limiterRelease = Float.parseFloat(plugin.getProperty("limiterRelease", "0.0001"));
                     float limiterSlope = Float.parseFloat(plugin.getProperty("limiterSlope", "0.5"));
 
-                    // Master limiter
-                    return Arrays.asList(
-                            new FilterLimiter(limiterThreshold, limiterAttack, limiterRelease, limiterSlope),
-                            new FilterLimiter(limiterThreshold, limiterAttack, limiterRelease, limiterSlope)
-                    );
-                }
+                    return IntStream.range(0, channels)
+                            .mapToObj((i) -> (MixerFilter) new FilterLimiter(
+                                    limiterThreshold, limiterAttack, limiterRelease, limiterSlope
+                            ))
+                            .collect(Collectors.toList());
+                },
+                mixer -> IntStream.range(0, channels)
+                        .mapToObj((i) -> (MixerFilter) new FilterSoftClip())
+                        .collect(Collectors.toList())
         );
     }
 

@@ -34,7 +34,7 @@ public class TransitionedAudioPlayer extends AudioPlayer {
         this.durationInSeconds = durationInSeconds;
         this.transitionTimeInSeconds = transitionTimeInSeconds;
 
-        this.volumeProperty = player.getOwner().getEntity().getPropery("Mixer:Volume");
+        this.volumeProperty = player.getOwner().getEntity().getProperty("Mixer:Volume");
         this.volumeProperty.ensure(1D);
     }
 

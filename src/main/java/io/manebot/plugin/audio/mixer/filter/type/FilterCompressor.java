@@ -29,7 +29,7 @@ public class FilterCompressor implements MixerFilter {
     @Override
     public int process(float[] samples, int offs, int len) {
         float value;
-        for (int i = 0; i < len; i ++) {
+        for (int i = offs; i < len; i ++) {
             value = Math.abs(samples[i]);
 
             // Process knee

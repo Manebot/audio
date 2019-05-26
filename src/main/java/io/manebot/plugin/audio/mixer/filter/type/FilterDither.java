@@ -27,11 +27,11 @@ public class FilterDither implements MixerFilter {
 
     @Override
     public int process(float[] samples, int offs, int len) {
-        for (int i = offs; i < len; i ++) {
-            if (samples[i] % 1f != 0f) // Only dither if sample has a remainder
-                samples[i] += ditherRange * (random.nextFloat());
+        for (int i = 0; i < len; i ++) {
+            if (samples[i+offs] % 1f != 0f) // Only dither if sample has a remainder
+                samples[i+offs] += ditherRange * (random.nextFloat());
         }
 
-        return len - offs;
+        return len;
     }
 }

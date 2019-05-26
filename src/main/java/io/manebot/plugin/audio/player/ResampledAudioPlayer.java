@@ -1,7 +1,9 @@
 package io.manebot.plugin.audio.player;
 
 import io.manebot.plugin.audio.AudioBuffer;
+import io.manebot.plugin.audio.mixer.Mixer;
 import io.manebot.plugin.audio.resample.Resampler;
+import io.manebot.plugin.audio.resample.ResamplerFactory;
 import io.manebot.user.User;
 
 import javax.sound.sampled.AudioFormat;
@@ -16,18 +18,15 @@ public class ResampledAudioPlayer extends BufferedAudioPlayer {
 
     private boolean closed = false;
 
-    public ResampledAudioPlayer(Type type,
-                                User owner,
+    public ResampledAudioPlayer(AudioPlayer player,
                                 AudioFormat outputFormat,
                                 int bufferSize,
-                                AudioPlayer player,
                                 Resampler resampler) {
-        super(type, owner, outputFormat, bufferSize);
+        super(player.getType(), player.getOwner(), outputFormat, bufferSize);
 
         this.player = player;
         this.resampler = resampler;
-
-        this.resampleBuffer = new AudioBuffer(bufferSize);
+        this.resampleBuffer = new AudioBuffer(resampler.getScaledBufferSize(bufferSize));
     }
 
     @Override
@@ -61,7 +60,7 @@ public class ResampledAudioPlayer extends BufferedAudioPlayer {
 
     @Override
     protected boolean processBuffer() throws IOException {
-        int available = Math.min(getBuffer().availableInput(), player.available());
+        int available = Math.min(resampleBuffer.availableInput(), player.available());
 
         // Read samples from the player into the buffer
         int read = resampleBuffer.write(player, available);
@@ -95,5 +94,30 @@ public class ResampledAudioPlayer extends BufferedAudioPlayer {
     @Override
     public int getChannels() {
         return resampler.getOutputFormat().getChannels();
+    }
+
+    public static ResampledAudioPlayer wrap(AudioPlayer player,
+                                            int bufferSize, AudioFormat target,
+                                            ResamplerFactory resamplerFactory) {
+        return new ResampledAudioPlayer(
+                player,
+                target,
+                bufferSize,
+                resamplerFactory.create(player.getOutputFormat(), target, bufferSize)
+        );
+    }
+
+    public static ResampledAudioPlayer wrap(AudioPlayer player,
+                                            Mixer mixer,
+                                            ResamplerFactory resamplerFactory) {
+        AudioFormat audioFormat = new AudioFormat(
+                mixer.getAudioSampleRate(),
+                32,
+                mixer.getAudioChannels(),
+                true,
+                false
+        );
+
+        return wrap(player, mixer.getBufferSize(), audioFormat, resamplerFactory);
     }
 }

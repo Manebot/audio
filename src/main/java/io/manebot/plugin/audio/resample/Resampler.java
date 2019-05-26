@@ -14,9 +14,19 @@ public abstract class Resampler implements AutoCloseable {
         this.outputFormat = outputFormat;
     }
 
+    public int getScaledBufferSize(int bufferSize) {
+        return (int)
+                Math.ceil(
+                        bufferSize *
+                        ((inputFormat.getSampleSizeInBits() * inputFormat.getChannels() * inputFormat.getSampleRate()) /
+                        (outputFormat.getSampleSizeInBits() * outputFormat.getChannels() * outputFormat.getSampleRate()))
+                );
+    }
+
     public AudioFormat getInputFormat() {
         return inputFormat;
     }
+
     public AudioFormat getOutputFormat() {
         return outputFormat;
     }

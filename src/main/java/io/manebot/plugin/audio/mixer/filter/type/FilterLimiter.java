@@ -23,8 +23,8 @@ public class FilterLimiter implements MixerFilter {
     public int process(float[] samples, int offs, int len) {
         float xn, a, fn, xdn;
 
-        for (int i = offs; i < offs+len; i++) {
-            xn = samples[i];
+        for (int i = 0; i < len; i++) {
+            xn = samples[i+offs];
             a = Math.abs(xn) - xdn1;
 
             if (a < 0) a = 0;
@@ -36,7 +36,7 @@ public class FilterLimiter implements MixerFilter {
             this.xdn1 = xdn;
             lookAheadBuffer[63] = xn;
             System.arraycopy(lookAheadBuffer, 1, lookAheadBuffer, 0, 63);
-            samples[i] = lookAheadBuffer[0] * fn;
+            samples[i+offs] = lookAheadBuffer[0] * fn;
         }
 
         return len;

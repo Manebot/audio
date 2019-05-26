@@ -11,13 +11,15 @@ import io.manebot.user.User;
 import io.manebot.user.UserAssociation;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public abstract class AudioChannel implements MixerChannel.Registrant {
+public abstract class AudioChannel {
 
     private final Mixer mixer;
     private final AudioChannelRegistrant owner;
@@ -152,13 +154,17 @@ public abstract class AudioChannel implements MixerChannel.Registrant {
             if (player.isBlocking() && getBlockingPlayers() >= getMaximumPlayers()) return false;
 
             // Add channel to mixer.
-            boolean b = mixer.addChannel(player);
-            if (!b) return false;
+            CompletableFuture<MixerChannel> future = mixer.addChannel(player);
+            if (future == null) return false;
+
+            onChannelAdded(player);
 
             fireListenerAction(x -> x.onPlayerAdded(this, player));
 
             if (isIdle())
                 setIdle(false);
+
+            future.thenAcceptAsync(this::onChannelRemoved);
 
             return true;
         } catch (Exception e) {
@@ -290,15 +296,13 @@ public abstract class AudioChannel implements MixerChannel.Registrant {
         new ArrayList<>(listeners).forEach(action);
     }
 
-    @Override
-    public void onChannelAdded(MixerChannel channel) {
+    private void onChannelAdded(MixerChannel channel) {
         // NOTE: my "&" character here is intended!
         if (this.players.size() <= 0 & this.players.add((AudioPlayer)channel))
             owner.onChannelActivated(this);
     }
 
-    @Override
-    public void onChannelRemoved(MixerChannel channel) {
+    private void onChannelRemoved(MixerChannel channel) {
         if (channel == null) throw new NullPointerException();
 
         try {

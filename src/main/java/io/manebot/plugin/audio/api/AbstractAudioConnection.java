@@ -61,11 +61,10 @@ public abstract class AbstractAudioConnection implements AudioConnection {
         synchronized (enableLock) {
             if (connected) return;
 
-            if (task != null)
+            if (task == null)
                 task = new MixerProcessingTask();
 
-            Thread thread = new Thread(task);
-            thread.start();
+            Virtual.getInstance().create(task).start();
 
             connected = true;
         }
@@ -159,8 +158,9 @@ public abstract class AbstractAudioConnection implements AudioConnection {
 
                 running = false;
                 audioLock.notifyAll();
-                future.get();
             }
+
+            future.get();
         }
 
         @Override
@@ -174,7 +174,7 @@ public abstract class AbstractAudioConnection implements AudioConnection {
                 List<Mixer> playingMixers = new ArrayList<>();
 
                 synchronized (audioLock) {
-                    while (isConnected() && audio.getPlugin().isEnabled()) {
+                    while (running && isConnected() && audio.getPlugin().isEnabled()) {
                         try (Profiler audioProfiler = Profiler.region("audio")) {
                             for (Mixer mixer : mixers) {
                                 // If the mixer isn't playing anything we have no work to do.
@@ -203,7 +203,11 @@ public abstract class AbstractAudioConnection implements AudioConnection {
                                 try {
                                     // Start the mixer if it's not running
                                     if (!mixer.isRunning()) {
+                                        Logger.getGlobal().fine("Starting mixer: " + mixer.getId() + "...");
+
                                         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+
+                                        Logger.getGlobal().fine("Started mixer: " + mixer.getId() + ".");
                                         mixer.setRunning(true);
                                     }
 

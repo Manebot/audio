@@ -18,7 +18,7 @@ public class FilterBandPassCompressor implements MixerFilter {
     @Override
     public int process(float[] samples, int offs, int len) {
         if (buffer == null || buffer.length < len) buffer = new float[len];
-        System.arraycopy(samples, 0, buffer, 0, len);
+        System.arraycopy(samples, offs, buffer, 0, len);
 
         softFilter.processAudio(buffer, len);
 
@@ -30,7 +30,7 @@ public class FilterBandPassCompressor implements MixerFilter {
         }
 
         for (int i = 0; i < len; i ++) {
-            samples[i] = (samples[i] * dry) + (buffer[i] * wet);
+            samples[i+offs] = (samples[i+offs] * dry) + (buffer[i] * wet);
         }
 
         return len;

@@ -27,9 +27,9 @@ public class FilterGain implements MixerFilter {
     @Override
     public int process(float[] samples, int offs, int len) {
         for (int i = 0; i < len; i ++) {
-            samples[i] = samples[i] * q;
+            samples[i+offs] = samples[i+offs] * q;
         }
 
-        return len - offs;
+        return len;
     }
 }

@@ -55,7 +55,7 @@ public class MuxedMultiChannelFilter extends AbstractFilter implements MultiChan
 
     public static MuxedMultiChannelFilter from(int channels, Function<Integer, SingleChannelFilter> callable) {
         return new MuxedMultiChannelFilter(
-                IntStream.of(channels)
+                IntStream.range(0, channels)
                 .mapToObj(callable::apply)
                 .collect(Collectors.toList())
         );

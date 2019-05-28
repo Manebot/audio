@@ -9,7 +9,7 @@ This is simply an API, and doesn't play music tracks on its own, although it's a
 <img src="https://github.com/Manevolent/manebot-audio/raw/master/pipeline.png">
 
 * **Conversations** map to **AudioChannels**, which in turn are directly associated to a **Mixer**.
-* **Mixers** read from multiple blocking **MixerChannels**, "summing" (+) their outputs, filter the mixed audio, and finally write to multiple blocking **MixerSinks** in a fan-out fashion.
+* **Mixers** read from multiple blocking **MixerChannels**, "summing" (+) their outputs, filter the mixed audio, and finally write to multiple blocking **MixerSinks** in a fan-out fashion.  Mixers can be highly opportunistic, though; even though a channel or sink *would* block, they must support an `available()` method, which a Mixer can check to avoid blocking.
 * **MixerChannel** is the foundational interface that provides essential audio input.  Examples of MixerChannels are: a music track (stream from a file or URI), text-to-speech, or sound effects.
 * **MixerSink** is the foundational interface that provides essential audio output.  Examples of MixerSinks are: output to a Teamspeak or Discord channel, a file to save to, or input to another Mixer (via a MixerChannel bridge)
 * **Filters** process audio after it's been summed in a *Mixer*, like an EQ, compressor, limiter, or clip filter.  You can write your own filters, or use the baisc ones provided in the source code.  Every Mixer has its own set of filters, but user-default filters can be relied on.

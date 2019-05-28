@@ -2,6 +2,8 @@
 
 This is the official audio plugin for my multi-platform chatbot, Manebot.  This plugin provides audio support for plugins such as Teamspeak and Discord, and acts as a foundation for the Music plugin and its associated plugins.
 
+This is simply an API, and doesn't play music tracks on its own.  To see the dependency that does, check out `music`: https://github.com/Manevolent/manebot-music
+
 ## Concepts
 
 <img src="https://github.com/Manevolent/manebot-audio/raw/master/pipeline.png">

@@ -1,13 +1,15 @@
 package io.manebot.plugin.audio.mixer;
 
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.Filter;
+import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
+import io.manebot.plugin.audio.mixer.filter.MuxedMultiChannelFilter;
+import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
 import io.manebot.plugin.audio.mixer.input.AudioProvider;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public abstract class AbstractMixer implements Mixer {
@@ -21,7 +23,7 @@ public abstract class AbstractMixer implements Mixer {
 
     private final List<MixerSink> sinks = Collections.synchronizedList(new LinkedList<>());
     private final List<FutureChannel> channels = Collections.synchronizedList(new LinkedList<>());
-    private final List<List<MixerFilter>> filters = Collections.synchronizedList(new LinkedList<>());
+    private final List<MultiChannelFilter> filters = Collections.synchronizedList(new LinkedList<>());
 
     private final Object channelLock = new Object();
 
@@ -42,20 +44,22 @@ public abstract class AbstractMixer implements Mixer {
     }
 
     @Override
-    public List<MixerFilter> addFilter(MixerFilter... filterChannels) {
-        if (filterChannels.length != getAudioChannels())
-            throw new IllegalArgumentException("invalid filter count: channel mismatch");
-
-        List<MixerFilter> filterList = Collections.unmodifiableList(Arrays.asList(filterChannels));
-
-        filters.add(filterList);
-
-        return filterList;
+    public MultiChannelFilter addFilter(SingleChannelFilter... filterChannels) {
+        return addFilter(new MuxedMultiChannelFilter(filterChannels));
     }
 
     @Override
-    public boolean removeFilter(List<MixerFilter> filterList) {
-        return filters.remove(filterList);
+    public MultiChannelFilter addFilter(MultiChannelFilter filter) {
+        if (filter.getChannels() != getAudioChannels())
+            throw new IllegalArgumentException("invalid filter count: channel mismatch");
+
+        filters.add(filter);
+        return filter;
+    }
+
+    @Override
+    public boolean removeFilter(MultiChannelFilter filter) {
+        return filters.remove(filter);
     }
 
     @Override
@@ -142,7 +146,7 @@ public abstract class AbstractMixer implements Mixer {
     }
 
     @Override
-    public Collection<List<MixerFilter>> getFilters() {
+    public Collection<MultiChannelFilter> getFilters() {
         return Collections.unmodifiableCollection(filters);
     }
 
@@ -212,7 +216,7 @@ public abstract class AbstractMixer implements Mixer {
             boolean stopped = getSinks().stream().filter(MixerSink::isRunning).allMatch(MixerSink::stop);
 
             // If stopped, reset all filters.
-            if (stopped) filters.forEach(filters -> filters.forEach(MixerFilter::reset));
+            if (stopped) filters.forEach(MultiChannelFilter::reset);
 
             return stopped;
         }

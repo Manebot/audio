@@ -1,6 +1,8 @@
 package io.manebot.plugin.audio.mixer.filter.type;
 
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.AbstractFilter;
+import io.manebot.plugin.audio.mixer.filter.Filter;
+import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
 
 /**
  * Compresses an audio signal (analog).
@@ -9,10 +11,12 @@ import io.manebot.plugin.audio.mixer.filter.MixerFilter;
  * When Q is 1, the signal volume is not modified.
  * When Q is closer to infinity, the signal volume is reduced.
  */
-public class FilterGain implements MixerFilter {
+public class FilterGain extends AbstractFilter implements SingleChannelFilter {
     private float q;
 
-    public FilterGain(float q) {
+    public FilterGain(float sampleRate, float q) {
+        super(sampleRate);
+
         this.q = q;
     }
 

@@ -1,7 +1,8 @@
 package io.manebot.plugin.audio.mixer;
 
 import io.manebot.plugin.audio.Audio;
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.Filter;
+import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
@@ -13,10 +14,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class BufferedMixer extends AbstractMixer {
-    /**
-     * Internal sample buffer
-     */
-    private final float[] buffer, mixBuffer, filterBuffer;
+    private final float[] buffer, mixBuffer;
+    private final float[][] filterBuffer;
+
     private boolean filtering = true;
     private long position = 0L;
 
@@ -29,7 +29,9 @@ public class BufferedMixer extends AbstractMixer {
 
         this.buffer = new float[bufferSize];
         this.mixBuffer = new float[bufferSize];
-        this.filterBuffer = new float[bufferSize / audioChannels];
+        this.filterBuffer = new float[audioChannels][];
+        for (int ch = 0; ch < audioChannels; ch ++)
+            this.filterBuffer[ch] = new float[bufferSize / audioChannels];
     }
 
     @Override
@@ -40,7 +42,7 @@ public class BufferedMixer extends AbstractMixer {
     @Override
     public void setFiltering(boolean enable) {
         this.filtering = enable;
-        if (!enable) getFilters().forEach(filters -> filters.forEach(MixerFilter::reset));
+        if (!enable) getFilters().forEach(Filter::reset);
     }
 
     @Override
@@ -88,26 +90,15 @@ public class BufferedMixer extends AbstractMixer {
             }
 
             // Manipulate audio based on filters
-            int channels = getAudioChannels();
-            int samplesPerChannel = len / channels;
-            for (int ch = 0; ch < channels; ch++) {
-                // Copy in buffer for channel
-                for (int smp = 0; smp < samplesPerChannel; smp++) {
-                    filterBuffer[smp] = buffer[(smp * channels) + ch];
+            if (filtering) {
+                int channels = getAudioChannels();
+                int samplesPerChannel = len / channels;
+                for (int ch = 0; ch < channels; ch++) {
+                    for (int smp = 0; smp < samplesPerChannel; smp++) {
+                        filterBuffer[ch][smp] = buffer[(smp * channels) + ch];
+                    }
                 }
-
-                // Filter the filter buffer
-                if (filtering) {
-                    int finalCh = ch; // hack
-                    getFilters().stream()
-                            .map(x -> x.get(finalCh))
-                            .forEach(filter -> filter.process(filterBuffer, 0, samplesPerChannel));
-                }
-
-                // Copy back in buffer for channel
-                for (int smp = 0; smp < samplesPerChannel; smp++) {
-                    buffer[(smp * channels) + ch] = filterBuffer[smp];
-                }
+                getFilters().forEach(filter -> filter.process(filterBuffer, 0, samplesPerChannel));
             }
 
             // Write to sinks (only those that are running and can accept these samples, though)
@@ -136,7 +127,7 @@ public class BufferedMixer extends AbstractMixer {
         private final String id;
 
         private final Collection<MixerSink> sinks = new LinkedList<>();
-        private final Collection<Function<Mixer, Collection<MixerFilter>>> filters = new LinkedList<>();
+        private final Collection<Function<Mixer, MultiChannelFilter>> filters = new LinkedList<>();
 
         private MixerRegistrant registrant;
         private Float bufferTime;
@@ -194,7 +185,7 @@ public class BufferedMixer extends AbstractMixer {
         }
 
         @Override
-        public Mixer.Builder addFilter(Function<Mixer, Collection<MixerFilter>> filter) {
+        public Mixer.Builder addFilter(Function<Mixer, MultiChannelFilter> filter) {
             filters.add(filter);
             return this;
         }
@@ -212,12 +203,8 @@ public class BufferedMixer extends AbstractMixer {
             for (MixerSink sink : sinks)
                 mixer.addSink(sink);
 
-            for (Function<Mixer, Collection<MixerFilter>> filters : filters) {
-                Collection<MixerFilter> stage = filters.apply(mixer);
-                MixerFilter[] arr = new MixerFilter[stage.size()];
-                stage.toArray(arr);
-                mixer.addFilter(arr);
-            }
+            for (Function<Mixer, MultiChannelFilter> filters : filters)
+                mixer.addFilter(filters.apply(mixer));
 
             return mixer;
         }

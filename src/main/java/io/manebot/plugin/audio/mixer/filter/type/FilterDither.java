@@ -1,6 +1,8 @@
 package io.manebot.plugin.audio.mixer.filter.type;
 
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.AbstractFilter;
+import io.manebot.plugin.audio.mixer.filter.Filter;
+import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
 
 import java.util.Random;
 
@@ -16,11 +18,13 @@ import java.util.Random;
  * between 4 and 5 so that 80% of the time it ended up on 5 then it would average 4.8 over the long run but
  * would have random, non-repeating error in the result.
  */
-public class FilterDither implements MixerFilter {
+public class FilterDither extends AbstractFilter implements SingleChannelFilter {
     private final Random random;
     private final float ditherRange;
 
-    public FilterDither(int bits) {
+    public FilterDither(float sampleRate, int bits) {
+        super(sampleRate);
+
         random = new Random(bits ^ 0xDEADBEEF);
         ditherRange = (1f / (float)Math.pow(2, bits));
     }

@@ -1,8 +1,10 @@
 package io.manebot.plugin.audio.mixer.filter.type;
 
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.AbstractFilter;
 
-public class FilterLimiter implements MixerFilter {
+import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
+
+public class FilterLimiter extends AbstractFilter implements SingleChannelFilter {
     public float xdn1 = 0f;
     private float[] lookAheadBuffer = new float[64];
     private float threshold;
@@ -12,7 +14,9 @@ public class FilterLimiter implements MixerFilter {
      */
     private float slope = 1f, rt = 0.4f, at = 0.4f;
 
-    public FilterLimiter(float threshold, float attack, float release, float slope) {
+    public FilterLimiter(float sampleRate, float threshold, float attack, float release, float slope) {
+        super(sampleRate);
+
         this.threshold = threshold;
         this.slope = slope;
         this.at = attack;

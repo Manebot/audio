@@ -1,18 +1,15 @@
 package io.manebot.plugin.audio.mixer.filter.type;
 
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.AbstractFilter;
 
-public class FilterSoftClip implements MixerFilter {
-    private final int channels;
-    private final float[] states;
+import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
 
-    public FilterSoftClip(int channels) {
-        this.channels = channels;
-        this.states = new float[channels];
-    }
+public class FilterSoftClip extends AbstractFilter implements SingleChannelFilter {
+    private final int channels = 1; // always mono
+    private final float[] states = new float[channels];
 
-    public FilterSoftClip() {
-        this(1);
+    public FilterSoftClip(float sampleRate) {
+        super(sampleRate);
     }
 
     @Override

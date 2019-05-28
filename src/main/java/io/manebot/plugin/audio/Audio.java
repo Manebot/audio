@@ -14,7 +14,9 @@ import io.manebot.plugin.audio.api.DefaultAudioRegistration;
 import io.manebot.plugin.audio.channel.AudioChannel;
 import io.manebot.plugin.audio.mixer.BufferedMixer;
 import io.manebot.plugin.audio.mixer.Mixer;
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
+import io.manebot.plugin.audio.mixer.filter.MuxedMultiChannelFilter;
+import io.manebot.plugin.audio.mixer.filter.SoftFilter;
 import io.manebot.plugin.audio.mixer.filter.type.*;
 
 import io.manebot.plugin.audio.resample.FFmpegResampler;
@@ -24,7 +26,6 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class Audio implements PluginReference {
     private final Plugin plugin;
@@ -154,18 +155,17 @@ public class Audio implements PluginReference {
                 .collect(Collectors.toList());
     }
 
-    public Collection<Function<Mixer, Collection<MixerFilter>>> getDefaultFilters(int channels) {
+    public Collection<Function<Mixer, MultiChannelFilter>> getDefaultFilters(float sampleRate, int channels) {
         return Arrays.asList(
-                mixer -> {
+                (mixer) -> {
                     // Compress
                     float compressorTheshold = Float.parseFloat(plugin.getProperty("compressorTheshold", "1"));
                     float compressorRatio = Float.parseFloat(plugin.getProperty("compressorRatio", "1"));
                     float compressorKnee = Float.parseFloat(plugin.getProperty("compressorKnee", "0"));
-                    return IntStream.range(0, channels)
-                            .mapToObj((i) -> (MixerFilter) new FilterCompressor(
-                                    compressorTheshold, compressorRatio, compressorKnee
-                            ))
-                            .collect(Collectors.toList());
+                    return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterCompressor(
+                            sampleRate,
+                            compressorTheshold, compressorRatio, compressorKnee
+                    ));
                 },
                 mixer -> {
                     float subBassFrequency = Float.parseFloat(plugin.getProperty("subBassFrequency", "65.0"));
@@ -173,14 +173,15 @@ public class Audio implements PluginReference {
                     float subBassWet = Float.parseFloat(plugin.getProperty("subBassWet", "0.35"));
                     float subBassDry = Float.parseFloat(plugin.getProperty("subBassDry", "0.65"));
 
-                    SoftFilter subBassFilter = new SoftFilter(mixer.getAudioSampleRate());
+                    SoftFilter subBassFilter = new SoftFilter(sampleRate);
                     subBassFilter.setFilterType(SoftFilter.FILTERTYPE_BP12);
                     subBassFilter.setFrequency(subBassFrequency);
                     subBassFilter.setResonance(subBassResonance);
 
-                    return IntStream.range(0, channels)
-                            .mapToObj((i) -> (MixerFilter) new FilterBandPass(subBassFilter, subBassWet, subBassDry))
-                            .collect(Collectors.toList());
+                    return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterBandPass(
+                            sampleRate,
+                            subBassFilter, subBassWet, subBassDry
+                    ));
                 },
                 mixer -> {
                     float bassFrequency = Float.parseFloat(plugin.getProperty("bassFrequency", "120.0"));
@@ -188,14 +189,15 @@ public class Audio implements PluginReference {
                     float bassWet = Float.parseFloat(plugin.getProperty("bassWet", "0.5"));
                     float bassDry = Float.parseFloat(plugin.getProperty("bassDry", "0.5"));
 
-                    SoftFilter bassFilter = new SoftFilter(mixer.getAudioSampleRate());
+                    SoftFilter bassFilter = new SoftFilter(sampleRate);
                     bassFilter.setFilterType(SoftFilter.FILTERTYPE_BP12);
                     bassFilter.setFrequency(bassFrequency);
                     bassFilter.setResonance(bassResonance);
 
-                    return IntStream.range(0, channels)
-                            .mapToObj((i) -> (MixerFilter) new FilterBandPass(bassFilter, bassWet, bassDry))
-                            .collect(Collectors.toList());
+                    return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterBandPass(
+                            sampleRate,
+                            bassFilter, bassWet, bassDry
+                    ));
                 },
                 mixer -> {
                     float midFrequency = Float.parseFloat(plugin.getProperty("midFrequency", "2500"));
@@ -207,9 +209,10 @@ public class Audio implements PluginReference {
                     midFilter.setFrequency(midFrequency);
                     midFilter.setResonance(midResonance);
 
-                    return IntStream.range(0, channels)
-                            .mapToObj((i) -> (MixerFilter) new FilterBandPass(midFilter, midWet, midDry))
-                            .collect(Collectors.toList());
+                    return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterBandPass(
+                            sampleRate,
+                            midFilter, midWet, midDry
+                    ));
                 },
                 mixer -> {
                     float limiterThreshold = Float.parseFloat(plugin.getProperty("limiterThreshold", "0.7"));
@@ -217,15 +220,12 @@ public class Audio implements PluginReference {
                     float limiterRelease = Float.parseFloat(plugin.getProperty("limiterRelease", "0.0001"));
                     float limiterSlope = Float.parseFloat(plugin.getProperty("limiterSlope", "0.5"));
 
-                    return IntStream.range(0, channels)
-                            .mapToObj((i) -> (MixerFilter) new FilterLimiter(
-                                    limiterThreshold, limiterAttack, limiterRelease, limiterSlope
-                            ))
-                            .collect(Collectors.toList());
+                    return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterLimiter(
+                            sampleRate,
+                            limiterThreshold, limiterAttack, limiterRelease, limiterSlope
+                    ));
                 },
-                mixer -> IntStream.range(0, channels)
-                        .mapToObj((i) -> (MixerFilter) new FilterSoftClip())
-                        .collect(Collectors.toList())
+                mixer -> MuxedMultiChannelFilter.from(channels, (ch) -> new FilterSoftClip(sampleRate))
         );
     }
 

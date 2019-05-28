@@ -1,9 +1,6 @@
 package io.manebot.plugin.audio.mixer.filter;
 
-/**
- * Represents a mono filter.  Stereo separation occurs in the mixer.
- */
-public interface MixerFilter {
+public interface SingleChannelFilter extends Filter {
 
     /**
      * Calls the filter to process the specified audio buffer.
@@ -14,10 +11,5 @@ public interface MixerFilter {
      * @return processed samples, usually must == len
      */
     int process(float[] buffer, int offs, int len);
-
-    /**
-     * Resets the filter's state back to the initial filter state.
-     */
-    default void reset() { }
 
 }

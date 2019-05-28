@@ -1,14 +1,18 @@
 package io.manebot.plugin.audio.mixer.filter.type;
 
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.AbstractFilter;
+import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
+import io.manebot.plugin.audio.mixer.filter.SoftFilter;
 
-public class FilterBandPassCompressor implements MixerFilter {
+public class FilterBandPassCompressor extends AbstractFilter implements SingleChannelFilter {
     private final SoftFilter softFilter;
     private final float wet, dry;
     private final float q;
     private float[] buffer;
 
-    public FilterBandPassCompressor(SoftFilter softFilter, float wet, float dry, float q) {
+    public FilterBandPassCompressor(float sampleRate, SoftFilter softFilter, float wet, float dry, float q) {
+        super(sampleRate);
+
         this.softFilter = softFilter;
         this.wet = wet;
         this.dry = dry;

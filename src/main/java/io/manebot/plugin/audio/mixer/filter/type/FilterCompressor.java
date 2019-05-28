@@ -1,6 +1,8 @@
 package io.manebot.plugin.audio.mixer.filter.type;
 
-import io.manebot.plugin.audio.mixer.filter.MixerFilter;
+import io.manebot.plugin.audio.mixer.filter.AbstractFilter;
+import io.manebot.plugin.audio.mixer.filter.Filter;
+import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
 
 /**
  * Compresses an audio signal (analog).
@@ -9,10 +11,12 @@ import io.manebot.plugin.audio.mixer.filter.MixerFilter;
  * When Q is 1, the signal volume is not modified.
  * When Q is closer to infinity, the signal volume is reduced.
  */
-public class FilterCompressor implements MixerFilter {
+public class FilterCompressor extends AbstractFilter implements SingleChannelFilter {
     private final float iratio, thresh, ratio, knee, kneeL, kneeR, mul;
 
-    public FilterCompressor(float thresh, float ratio, float knee) {
+    public FilterCompressor(float sampleRate, float thresh, float ratio, float knee) {
+        super(sampleRate);
+
         this.thresh = thresh;
         this.ratio = ratio;
         this.iratio = 1f/ratio;
@@ -29,8 +33,8 @@ public class FilterCompressor implements MixerFilter {
     @Override
     public int process(float[] samples, int offs, int len) {
         float value;
-        for (int i = offs; i < len; i ++) {
-            value = Math.abs(samples[i]);
+        for (int i = 0; i < len; i ++) {
+            value = Math.abs(samples[i+offs]);
 
             // Process knee
             if (value >= kneeR)
@@ -41,10 +45,10 @@ public class FilterCompressor implements MixerFilter {
             value *= mul;
 
             // Re-pack sample into new output.
-            if (samples[i] < 0)
-                samples[i] = 0f - value; // negative value processing
+            if (samples[i+offs] < 0)
+                samples[i+offs] = 0f - value; // negative value processing
             else
-                samples[i] = value;
+                samples[i+offs] = value;
         }
 
         return len;

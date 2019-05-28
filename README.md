@@ -4,6 +4,10 @@ This is the official audio plugin for my multi-platform chatbot, Manebot.  This 
 
 This is simply an API, and doesn't play music tracks on its own, although it's all a platform needs to support those features.  To see the dependency that does, check out `music`: https://github.com/Manevolent/manebot-music
 
+## Commands
+
+The `audio` and `mixer` commands are provided by this plugin. You can get help for those using `help audio` or `help mixer`.
+
 ## Concepts
 
 <img src="https://github.com/Manevolent/manebot-audio/raw/master/pipeline.png">

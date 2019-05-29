@@ -211,8 +211,9 @@ public class AudioCommand extends AnnotatedCommandExecutor {
                         .item("Channel state", channel.getState().name() +  (channel.isIdle() ? " (idle)" : ""))
                         .item("Audio players",channel.getPlayers().size() +
                                 " (" + channel.getBlockingPlayers() + " blocking)")
-                        .item("Members", listeners.stream().map(x ->
-                                x.getUser().getDisplayName() + (channel.isSpeaking(x) ? " (speaking)" :"")
+                        .item("Members", listeners.stream().map(
+                                x -> x.getUser().getDisplayName() +
+                                        (channel.isProviding(x.getPlatformUser()) ? " (speaking)" :"")
                         ).collect(Collectors.toList()))
         );
     }

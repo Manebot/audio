@@ -7,12 +7,10 @@ import io.manebot.plugin.audio.mixer.Mixer;
 import io.manebot.plugin.audio.mixer.input.AudioProvider;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.player.AudioPlayer;
-import io.manebot.user.User;
 import io.manebot.user.UserAssociation;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -24,8 +22,7 @@ public abstract class AudioChannel {
     private final Mixer mixer;
     private final AudioChannelRegistrant owner;
     private final List<AudioPlayer> players = new ArrayList<>();
-    private final Map<UserAssociation, Boolean> userSpeakingMap = Collections.synchronizedMap(new HashMap<>());
-    private final Map<AudioProvider, Boolean> providerSpeakingMap = Collections.synchronizedMap(new LinkedHashMap<>());
+    private final Map<PlatformUser, AudioProvider> providerMap = Collections.synchronizedMap(new LinkedHashMap<>());
     private final List<Listener> listeners = new LinkedList<>();
 
     private final ReentrantLock lock = new ReentrantLock();
@@ -218,53 +215,31 @@ public abstract class AudioChannel {
         }
     }
 
-    public boolean isSpeaking(AudioProvider user) {
-        Boolean value = providerSpeakingMap.get(user);
-
-        if (value == null)
-            return false;
-        else
-            return value;
+    public boolean isProviding(PlatformUser user) {
+        return providerMap.containsKey(user);
     }
 
-    public void setSpeaking(AudioProvider provider, boolean speaking) {
-        if (provider == null) return;
+    public boolean setProvider(PlatformUser user, AudioProvider provider) {
+        Objects.requireNonNull(user);
+        Objects.requireNonNull(provider);
 
-        boolean value = isSpeaking(provider);
-
-        if (value != speaking) {
-            synchronized (providerSpeakingMap) {
-                if (speaking)
-                    providerSpeakingMap.put(provider, true);
-                else
-                    providerSpeakingMap.remove(provider);
-            }
-
-            fireListenerAction(x -> x.onSpeaking(this, provider, speaking));
+        boolean added;
+        synchronized (providerMap) {
+            added = providerMap.put(user, provider) != provider;
         }
+        if (added) fireListenerAction(x -> x.onProviderStarted(this, user, provider));
+        return added;
     }
 
-    public boolean isSpeaking(UserAssociation user) {
-        Boolean value = userSpeakingMap.get(user);
+    public boolean removeProvider(PlatformUser user) {
+        Objects.requireNonNull(user);
 
-        if (value == null)
-            return false;
-        else
-            return value;
-    }
-
-    public void setSpeaking(UserAssociation user, boolean speaking) {
-        if (user == null) return;
-
-        boolean value = isSpeaking(user);
-
-        if (value != speaking) {
-            synchronized (userSpeakingMap) {
-                userSpeakingMap.put(user, speaking);
-            }
-
-            fireListenerAction(x -> x.onSpeaking(this, user, speaking));
+        boolean removed;
+        synchronized (providerMap) {
+            removed = providerMap.remove(user) != null;
         }
+        if (removed) fireListenerAction(x -> x.onProviderStopped(this, user));
+        return removed;
     }
 
     /**
@@ -273,8 +248,8 @@ public abstract class AudioChannel {
      * @param user User to listen to.
      * @return AudioProvider instance.
      */
-    public AudioProvider listen(User user) {
-        throw new UnsupportedOperationException();
+    public AudioProvider getProvider(PlatformUser user) {
+        return providerMap.get(user);
     }
 
     public void setIdle(boolean idle) {
@@ -353,13 +328,12 @@ public abstract class AudioChannel {
             listener.onRegistered(this);
 
             List<UserAssociation> activeListeners = getRegisteredListeners();
-            Map<UserAssociation, Boolean> speakingMap = new HashMap<>(this.userSpeakingMap);
-            Map<AudioProvider, Boolean> providerSpeakingMap = new HashMap<>(this.providerSpeakingMap);
-
             for (UserAssociation user : activeListeners) listener.onJoin(this, user);
-            for (UserAssociation user : speakingMap.keySet()) listener.onSpeaking(this, user, speakingMap.get(user));
-            for (AudioProvider provider : providerSpeakingMap.keySet())
-                listener.onSpeaking(this, provider, providerSpeakingMap.get(provider));
+
+            synchronized (this.providerMap) {
+                for (Map.Entry<PlatformUser, AudioProvider> entry : providerMap.entrySet())
+                    listener.onProviderStarted(this, entry.getKey(), entry.getValue());
+            }
 
             return true;
         } else return false;
@@ -368,15 +342,6 @@ public abstract class AudioChannel {
     public boolean unregisterListener(Listener listener) {
         if (this.listeners.remove(listener)) {
             listener.onUnregistered(this);
-
-            List<UserAssociation> activeListeners = getRegisteredListeners();
-            Map<UserAssociation, Boolean> speakingMap = new HashMap<>(this.userSpeakingMap);
-
-            for (UserAssociation user : activeListeners) listener.onLeave(this, user);
-            for (UserAssociation user : speakingMap.keySet()) listener.onSpeaking(this, user, false);
-            for (AudioProvider provider : providerSpeakingMap.keySet())
-                listener.onSpeaking(this, provider, false);
-
             return true;
         } else return false;
     }
@@ -413,8 +378,8 @@ public abstract class AudioChannel {
         default void onRegistered(AudioChannel channel) {}
         default void onUnregistered(AudioChannel channel) {}
 
-        default void onSpeaking(AudioChannel channel, UserAssociation association, boolean speaking) {}
-        default void onSpeaking(AudioChannel channel, AudioProvider provider, boolean speaking) {}
+        default void onProviderStarted(AudioChannel channel, PlatformUser user, AudioProvider provider) {}
+        default void onProviderStopped(AudioChannel channel, PlatformUser user) {}
 
         default void onJoin(AudioChannel channel, UserAssociation association) {}
         default void onLeave(AudioChannel channel, UserAssociation association) {}

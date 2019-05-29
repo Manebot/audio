@@ -12,6 +12,7 @@ The `audio` and `mixer` commands are provided by this plugin. You can get help f
 
 <img src="https://github.com/Manevolent/manebot-audio/raw/master/pipeline.png">
 
+* **AudioChannels** are the front-end to the audio system API, offering features such as: adding or removing audio channels, querying end-users who are listening to the channel, listening to individual *PlatformUsers* as they speak (and receiving audio they send individually), and attaching event listeners to events related to those actions.
 * **Conversations** map to **AudioChannels**, which in turn are directly associated to a **Mixer**.
 * **Mixers** read from multiple blocking **MixerChannels**, "summing" (+) their outputs, filter the mixed audio, and finally write to multiple blocking **MixerSinks** in a fan-out fashion.  Mixers can be highly opportunistic, though; even though a channel or sink *would* block, they must support an `available()` method, which a Mixer can check to avoid blocking.
 * **MixerChannel** is the foundational interface that provides essential audio input.  Examples of MixerChannels are: a music track (stream from a file or URI), text-to-speech, or sound effects.

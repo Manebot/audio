@@ -108,9 +108,8 @@ public class MixerCommand extends AnnotatedCommandExecutor {
     @Command(description = "Changes mixer volume for your players", permission = "audio.mixer.volume")
     public void volume(CommandSender sender,
                       @CommandArgumentLabel.Argument(label = "volume") String label,
-                      @CommandArgumentNumeric.Argument() int volume)
+                      @CommandArgumentNumeric.Argument() double value)
             throws CommandExecutionException {
-        double value = (double) volume;
         if (value < 10D) throw new CommandArgumentException("Mixer volume cannot be lower than 10%.");
         else if (value > 100D) {
             if (!sender.getUser().hasPermission(Permission.get("system.audio.volume.loud")))

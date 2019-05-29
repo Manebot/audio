@@ -110,7 +110,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                       @CommandArgumentLabel.Argument(label = "volume") String label,
                       @CommandArgumentNumeric.Argument() double value)
             throws CommandExecutionException {
-        if (value < 10D) throw new CommandArgumentException("Mixer volume cannot be lower than 10%.");
+        if (value < 1D) throw new CommandArgumentException("Mixer volume cannot be lower than 1%.");
         else if (value > 100D) {
             if (!sender.getUser().hasPermission(Permission.get("system.audio.volume.loud")))
                 throw new CommandArgumentException("Mixer volume cannot be higher than 100%.");

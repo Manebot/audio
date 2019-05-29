@@ -14,6 +14,7 @@ import javax.sound.sampled.AudioFormat;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 public class FFmpegAudioPlayer extends BufferedAudioPlayer {
@@ -21,6 +22,7 @@ public class FFmpegAudioPlayer extends BufferedAudioPlayer {
     private final Object nativeLock = new Object();
     private volatile boolean eof, closed = false;
     private final AudioFormat format;
+    private final CompletableFuture<AudioPlayer> future = new CompletableFuture<>();
 
     public FFmpegAudioPlayer(Type type,
                              User owner,
@@ -97,8 +99,8 @@ public class FFmpegAudioPlayer extends BufferedAudioPlayer {
     }
 
     @Override
-    public Future getFuture() {
-        return null;
+    public CompletableFuture getFuture() {
+        return future;
     }
 
     public boolean isClosed() {
@@ -117,13 +119,18 @@ public class FFmpegAudioPlayer extends BufferedAudioPlayer {
 
     @Override
     public void close() throws Exception {
+        boolean acted = false;
+
         synchronized (nativeLock) {
             if (!closed) {
                 substream.getParent().close();
                 eof = true;
                 closed = true;
+                acted = true;
             }
         }
+
+        future.complete(this);
     }
 
     public final AudioFormat getFormat() {

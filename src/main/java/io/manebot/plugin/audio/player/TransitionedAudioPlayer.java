@@ -4,6 +4,7 @@ import io.manebot.property.Property;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,7 +46,7 @@ public class TransitionedAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public Future getFuture() {
+    public CompletableFuture<AudioPlayer> getFuture() {
         return player.getFuture();
     }
 

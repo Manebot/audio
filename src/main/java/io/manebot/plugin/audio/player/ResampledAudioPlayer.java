@@ -76,10 +76,14 @@ public class ResampledAudioPlayer extends BufferedAudioPlayer {
 
     @Override
     public void close() throws Exception {
-        player.close();
-        resampler.close();
+        if (!player.isClosed())
+            player.close();
 
-        closed = true;
+        if (!closed) {
+            resampler.close();
+            closed = true;
+            future.complete(this);
+        }
     }
 
     public AudioFormat getFormat() {

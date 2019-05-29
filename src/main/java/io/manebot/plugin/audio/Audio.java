@@ -70,7 +70,8 @@ public class Audio implements PluginReference {
         if (channel == null)
             throw new CommandExecutionException("There is no audio channel associated with this conversation.");
 
-        if (!channel.getListeners().contains(sender.getPlatformUser()))
+        if (!channel.getListeners().contains(sender.getPlatformUser()) &&
+                !sender.getUser().hasPermission("audio.listen.bypass"))
             throw new CommandArgumentException("You are not listening to this channel.");
 
         return channel;

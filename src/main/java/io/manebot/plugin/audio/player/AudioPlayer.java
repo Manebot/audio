@@ -5,6 +5,7 @@ import io.manebot.user.User;
 
 import javax.sound.sampled.AudioFormat;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 public abstract class AudioPlayer implements MixerChannel {
@@ -24,7 +25,7 @@ public abstract class AudioPlayer implements MixerChannel {
         return owner.getDisplayName() + "'s AudioPlayer";
     }
 
-    public abstract Future getFuture();
+    public abstract CompletableFuture<AudioPlayer> getFuture();
 
     public final AudioFormat getOutputFormat() {
         return outputFormat;

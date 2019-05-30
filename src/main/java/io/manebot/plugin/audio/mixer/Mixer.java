@@ -5,9 +5,11 @@ import io.manebot.plugin.audio.mixer.filter.Filter;
 import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
 import io.manebot.plugin.audio.mixer.filter.MuxedMultiChannelFilter;
 import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
+import io.manebot.plugin.audio.mixer.input.AudioProvider;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
+import javax.sound.sampled.AudioFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -144,6 +146,14 @@ public interface Mixer {
      * @return Channel count.
      */
     int getAudioChannels();
+
+    /**
+     * Gets the Java AudioFormat of this mixer, which is the acceptable input format of the mixer.
+     * @return AudioFormat instance corresponding to the input to this mixer.
+     */
+    default AudioFormat getAudioFormat() {
+        return AudioProvider.getFormat(getAudioSampleRate(), getAudioChannels());
+    }
 
     interface Builder {
 

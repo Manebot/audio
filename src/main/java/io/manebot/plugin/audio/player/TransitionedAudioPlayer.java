@@ -1,53 +1,46 @@
 package io.manebot.plugin.audio.player;
 
+import io.manebot.plugin.audio.mixer.input.AudioProvider;
+import io.manebot.plugin.audio.resample.Resampler;
+import io.manebot.plugin.audio.resample.ResamplerFactory;
 import io.manebot.property.Property;
+import io.manebot.user.User;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class TransitionedAudioPlayer extends AudioPlayer {
-    private final AudioPlayer player;
     private final Callback callback;
 
     private long position = 0L;
 
     private State state = State.INITIALIZE;
 
-    private double durationInSeconds,
-            transitionTimeInSeconds,
-            closeTimeInSeconds = 0D;
+    private double durationInSeconds, transitionTimeInSeconds, closeTimeInSeconds = 0D;
 
     private final Property volumeProperty;
 
-    public TransitionedAudioPlayer(AudioPlayer player,
+    public TransitionedAudioPlayer(Type type, User owner,
+                                   AudioProvider provider,
                                    double durationInSeconds,
                                    double transitionTimeInSeconds,
                                    Callback callback) {
-        super(player.getType(), player.getOwner(), player.getOutputFormat());
+        super(type, owner, provider);
 
         this.callback = callback;
-        this.player = player;
 
         this.durationInSeconds = durationInSeconds;
         this.transitionTimeInSeconds = transitionTimeInSeconds;
 
-        this.volumeProperty = player.getOwner().getEntity().getProperty("Mixer:Volume");
+        this.volumeProperty = getOwner().getEntity().getProperty("Mixer:Volume");
         this.volumeProperty.ensure(1D);
     }
 
     public boolean isBlocking() {
-        return super.isBlocking() &&
-                player.isBlocking() &&
-                state != State.FADE_OUT;
-    }
-
-    @Override
-    public CompletableFuture<AudioPlayer> getFuture() {
-        return player.getFuture();
+        return super.isBlocking() && state != State.FADE_OUT;
     }
 
     @Override
@@ -57,24 +50,14 @@ public class TransitionedAudioPlayer extends AudioPlayer {
 
     @Override
     public boolean isPlaying() {
-        return player.isPlaying() && state != State.CLOSED;
+        return super.isPlaying() && state != State.CLOSED;
     }
 
     @Override
     public int available() {
-        return state != State.CLOSED ? player.available() :
-                (durationInSeconds == Double.MAX_VALUE ? Integer.MAX_VALUE : 0);
+        return state != State.CLOSED ? super.available() : 0;
     }
 
-    @Override
-    public int getSampleRate() {
-        return player.getSampleRate();
-    }
-
-    @Override
-    public int getChannels() {
-        return player.getChannels();
-    }
 
     @Override
     public int read(float[] floats, int offs, int i) throws IOException {
@@ -83,31 +66,33 @@ public class TransitionedAudioPlayer extends AudioPlayer {
         int read;
 
         try {
-            read = player.read(floats, 0, i);
+            read = super.read(floats, 0, i);
         } catch (EOFException ex) {
             read = -1;
         }
 
-        if (read <= 0) {
-            setState(State.CLOSED);
-        } else {
-            float volume;
-            for (int x = 0; x < read; x += getOutputFormat().getChannels()) {
-                volume = volumeAtPosition(position + x) * (float) volumeProperty.getDouble();
-                for (int ch = 0; ch < getOutputFormat().getChannels(); ch ++)
-                    floats[offs + x + ch] *= volume;
-            }
+        try {
+            if (read <= 0) {
+                setState(State.CLOSED);
+            } else {
+                float volume;
+                for (int x = 0; x < read; x += getChannels()) {
+                    volume = volumeAtPosition(position + x) * (float) volumeProperty.getDouble();
+                    for (int ch = 0; ch < getChannels(); ch++)
+                        floats[offs + x + ch] *= volume;
+                }
 
-            position += read;
+                position += read;
+            }
+        } catch (Exception ex) {
+            throw new IOException(ex);
         }
 
         return read;
     }
 
-    private boolean setState(State state) {
+    private boolean setState(State state) throws Exception {
         if (this.state != state) {
-            Logger.getGlobal().fine("Changing " + getClass().getName() + " state: " + this.state + " -> " + state);
-
             this.state = state;
 
             if (state == State.FADE_IN) {
@@ -117,13 +102,10 @@ public class TransitionedAudioPlayer extends AudioPlayer {
                 callback.onFadeOut();
             } else if (state == State.CLOSED) {
                 try {
-                    player.close();
-                } catch (Exception e) {
-                    Logger.getGlobal().log(Level.SEVERE, "Problem closing transitioned audio player", e);
+                    super.close();
+                } finally {
+                    callback.onFinished(getTimeInSeconds(position));
                 }
-
-                // Call the callback.
-                callback.onFinished(getTimeInSeconds(position));
             }
 
             return true;
@@ -133,15 +115,14 @@ public class TransitionedAudioPlayer extends AudioPlayer {
     }
 
     private double getTimeInSeconds(long position) {
-        return (double)(position/player.getOutputFormat().getChannels())
-                / (double)player.getOutputFormat().getSampleRate();
+        return (double)(position / getChannels()) / (double)getSampleRate();
     }
 
-    private float volumeAtPosition(long position) {
+    private float volumeAtPosition(long position) throws Exception {
         return volumeAtPosition(getTimeInSeconds(position));
     }
 
-    private float volumeAtPosition(double timeInSeconds) {
+    private float volumeAtPosition(double timeInSeconds) throws Exception {
         float f;
         boolean shouldFadeOut = durationInSeconds - timeInSeconds <= transitionTimeInSeconds;
 
@@ -166,7 +147,7 @@ public class TransitionedAudioPlayer extends AudioPlayer {
                         Math.pow(transitionTimeInSeconds, 0.5d)));
 
                 // Handle cancellation by finding if the audio is too quiet to be heard.
-                if (f <= (1f / Math.pow(2D, getOutputFormat().getSampleSizeInBits()))) {
+                if (f <= (1f / Math.pow(2D, 32))) {
                     setState(State.CLOSED);
                 } else {
                     f= Math.max(0f, Math.min(1f, Math.min(
@@ -187,7 +168,12 @@ public class TransitionedAudioPlayer extends AudioPlayer {
     public boolean stop() {
         State now = state;
         if (now != State.FADE_OUT && now != State.CLOSED) {
-            setState(State.FADE_OUT);
+            try {
+                setState(State.FADE_OUT);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
             return true;
         }
 
@@ -196,7 +182,11 @@ public class TransitionedAudioPlayer extends AudioPlayer {
 
     @Override
     public boolean kill() {
-        return setState(State.CLOSED);
+        try {
+            return setState(State.CLOSED);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

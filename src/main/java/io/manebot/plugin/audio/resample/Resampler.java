@@ -32,7 +32,7 @@ public abstract class Resampler implements AutoCloseable {
     }
 
     public int resample(AudioBuffer in, AudioBuffer out) {
-        float[] samples = new float[in.availableOutput()];
+        float[] samples = new float[Math.min(in.availableOutput(), out.availableInput())];
         int read = in.read(samples, 0, samples.length);
         return resample(samples, read, out);
     }

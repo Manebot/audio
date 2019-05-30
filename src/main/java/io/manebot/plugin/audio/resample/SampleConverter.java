@@ -67,6 +67,7 @@ public interface SampleConverter {
 
             switch (audioFormat.getEncoding().toString()) {
                 case "PCM_SIGNED":
+                case "PCM_FLOAT":
                     signed = true;
                     break;
                 case "PCM_UNSIGNED":

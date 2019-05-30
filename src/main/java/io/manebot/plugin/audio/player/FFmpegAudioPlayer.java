@@ -1,9 +1,6 @@
 package io.manebot.plugin.audio.player;
 
-import com.github.manevolent.ffmpeg4j.AudioFrame;
-import com.github.manevolent.ffmpeg4j.FFmpegException;
-import com.github.manevolent.ffmpeg4j.FFmpegInput;
-import com.github.manevolent.ffmpeg4j.MediaType;
+import com.github.manevolent.ffmpeg4j.*;
 import com.github.manevolent.ffmpeg4j.source.AudioSourceSubstream;
 import com.github.manevolent.ffmpeg4j.source.MediaSourceSubstream;
 import com.github.manevolent.ffmpeg4j.stream.source.FFmpegSourceStream;
@@ -137,14 +134,6 @@ public class FFmpegAudioPlayer extends BufferedAudioPlayer {
         return format;
     }
 
-    /**
-     * Opens a new player with an FFmpeg input source.
-     *
-     * @param inputFormat Input format
-     * @param inputStream Input stream
-     * @return
-     * @throws FFmpegException
-     */
     public static FFmpegAudioPlayer open(
             Type type,
             User owner,
@@ -153,8 +142,25 @@ public class FFmpegAudioPlayer extends BufferedAudioPlayer {
             int bufferSize
     ) throws FFmpegException {
         FFmpegInput input = new FFmpegInput(inputStream);
-        FFmpegSourceStream stream = input.open(inputFormat);
+        return open(type, owner, input, inputFormat, bufferSize);
+    }
 
+    public static FFmpegAudioPlayer open(
+            Type type,
+            User owner,
+            FFmpegInput input,
+            avformat.AVInputFormat format,
+            int bufferSize
+    ) throws FFmpegException {
+        return open(type, owner, input.open(format), bufferSize);
+    }
+
+    public static FFmpegAudioPlayer open(
+            Type type,
+            User owner,
+            FFmpegSourceStream stream,
+            int bufferSize
+    ) throws FFmpegException {
         for (MediaSourceSubstream substream : stream.registerStreams())
             substream.setDecoding(false);
 
@@ -182,6 +188,6 @@ public class FFmpegAudioPlayer extends BufferedAudioPlayer {
             );
         }
 
-        throw new FFmpegException("no audio substreams found in input: " + inputFormat.name().getString());
+        throw new FFmpegException("no audio substreams found in input");
     }
 }

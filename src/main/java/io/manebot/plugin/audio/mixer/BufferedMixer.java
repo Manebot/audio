@@ -98,7 +98,14 @@ public class BufferedMixer extends AbstractMixer {
                         filterBuffer[ch][smp] = buffer[(smp * channels) + ch];
                     }
                 }
+
                 getFilters().forEach(filter -> filter.process(filterBuffer, 0, samplesPerChannel));
+
+                for (int ch = 0; ch < channels; ch++) {
+                    for (int smp = 0; smp < samplesPerChannel; smp++) {
+                        buffer[(smp * channels) + ch] = filterBuffer[ch][smp];
+                    }
+                }
             }
 
             // Write to sinks (only those that are running and can accept these samples, though)

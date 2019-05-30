@@ -62,7 +62,8 @@ public class TransitionedAudioPlayer extends AudioPlayer {
 
     @Override
     public int available() {
-        return state != State.CLOSED ? player.available() : 0;
+        return state != State.CLOSED ? player.available() :
+                (durationInSeconds == Double.MAX_VALUE ? Integer.MAX_VALUE : 0);
     }
 
     @Override

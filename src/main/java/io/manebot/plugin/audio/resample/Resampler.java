@@ -3,8 +3,8 @@ package io.manebot.plugin.audio.resample;
 import io.manebot.plugin.audio.AudioBuffer;
 
 import javax.sound.sampled.AudioFormat;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.nio.*;
+import java.util.function.*;
 
 public abstract class Resampler implements AutoCloseable {
     private final AudioFormat inputFormat, outputFormat;
@@ -13,14 +13,14 @@ public abstract class Resampler implements AutoCloseable {
         this.inputFormat = inputFormat;
         this.outputFormat = outputFormat;
     }
+    
+    public double getScale() {
+        return  ((inputFormat.getSampleSizeInBits() * inputFormat.getChannels() * inputFormat.getSampleRate()) /
+                        (outputFormat.getSampleSizeInBits() * outputFormat.getChannels() * outputFormat.getSampleRate()));
+    }
 
     public int getScaledBufferSize(int bufferSize) {
-        return (int)
-                Math.ceil(
-                        bufferSize *
-                        ((inputFormat.getSampleSizeInBits() * inputFormat.getChannels() * inputFormat.getSampleRate()) /
-                        (outputFormat.getSampleSizeInBits() * outputFormat.getChannels() * outputFormat.getSampleRate()))
-                );
+        return (int) Math.ceil(bufferSize * getScale());
     }
 
     public AudioFormat getInputFormat() {
@@ -32,36 +32,29 @@ public abstract class Resampler implements AutoCloseable {
     }
 
     public int resample(AudioBuffer in, AudioBuffer out) {
-        float[] samples = new float[Math.min(in.availableOutput(), out.availableInput())];
-        int read = in.read(samples, 0, samples.length);
-        return resample(samples, read, out);
+        return resample(in::read, in.availableOutput(), out::write, out.availableInput());
     }
-
-    public int resample(float[] samples, AudioBuffer out) {
-        return resample(samples, samples.length, out);
+    
+    public int resample(float[] in, int in_available, BiFunction<FloatBuffer, Integer, Integer> out, int out_available) {
+        return resample((buffer, len) -> { buffer.put(in, 0, len); return len; }, in_available, out, out_available);
     }
-
-    public int resample(double[] sampleBuffer, AudioBuffer out) {
-        return resample(sampleBuffer, sampleBuffer.length, out);
+    
+    public int resample(float[] in, int in_available, float[] out, int out_available) {
+        return resample((buffer, len) -> { buffer.put(in, 0, len); return len; }, in_available,
+                        (buffer, len) -> { buffer.get(out, 0, len); return len; }, out_available);
     }
-
-    public int resample(double[] sampleBuffer, int samples, AudioBuffer out) {
-        float[] floatSampleBuffer = new float[samples];
-        for (int i = 0; i < samples; i ++) floatSampleBuffer[i] = (float) sampleBuffer[i];
-
-        return resample(floatSampleBuffer, samples, out);
+    
+    public abstract int resample(BiFunction<FloatBuffer, Integer, Integer> in, int in_available,
+                    BiFunction<FloatBuffer, Integer, Integer> out, int out_available);
+    
+    public int flush(AudioBuffer out) {
+        return flush(out::write, out.availableInput());
     }
-
-    public int resample(float[] sampleBuffer, int samples, AudioBuffer out) {
-        ByteBuffer byteBuffer = ByteBuffer.allocate(samples * 4);
-        byteBuffer.order(ByteOrder.nativeOrder());
-
-        byteBuffer.asFloatBuffer().put(sampleBuffer, 0, samples);
-
-        return resample(byteBuffer, samples, out);
+    
+    public int flush(float[] out, int out_available) {
+        return flush((buffer, len) -> { buffer.get(out, 0, len); return len; }, out_available);
     }
-
-    public abstract int resample(byte[] frameData, int samples, AudioBuffer out);
-    public abstract int resample(ByteBuffer floatBufferAsBytes, int samples, AudioBuffer out);
-    public abstract int flush(AudioBuffer out);
+    
+    public abstract int flush(BiFunction<FloatBuffer, Integer, Integer> out, int out_available);
+    
 }

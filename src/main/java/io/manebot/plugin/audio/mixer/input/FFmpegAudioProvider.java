@@ -78,6 +78,9 @@ public class FFmpegAudioProvider extends BufferedAudioProvider implements Runnab
                 fillLock.notifyAll();
             }
         }
+        
+        if (read <= 0 && unhandled != null)
+            throw unhandled;
 
         return read;
     }

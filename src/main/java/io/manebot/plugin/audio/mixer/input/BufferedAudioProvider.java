@@ -60,14 +60,7 @@ public abstract class BufferedAudioProvider implements AudioProvider {
                 }
             }
 
-            pos += this.buffer.mix(
-                    buffer,
-                    pos + offs,
-                    Math.min(
-                            len - pos,
-                            this.buffer.availableOutput()
-                    )
-            );
+            pos += this.buffer.read(buffer, pos + offs, Math.min(len - pos, this.buffer.availableOutput()));
         }
 
         // if we've reached the end of the file ('eof' flag set high) and 'pos' (read samples) is <= 0, we

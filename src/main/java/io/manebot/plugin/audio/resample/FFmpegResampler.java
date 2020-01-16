@@ -10,6 +10,7 @@ import javax.sound.sampled.AudioFormat;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.function.*;
 
 /**
  * NOTE: FFmpeg is very picky about what sample count you use. Must divide sample count by channel count.
@@ -170,85 +171,53 @@ public class FFmpegResampler extends Resampler {
             recvBuffer = null;
         }
     }
-
+    
     @Override
-    public int resample(byte[] frameData, int samples, AudioBuffer audioBuffer) {
-        int ffmpegNativeLength = samples * 4;
-        if (presampleOutputBuffer.capacity() < ffmpegNativeLength) {
-            presampleOutputBuffer = ByteBuffer.allocate(ffmpegNativeLength);
-            presampleOutputBuffer.order(ByteOrder.nativeOrder());
-        }
-
-        presampleOutputBuffer.clear();
-
-        sampleConverter.convert(
-                frameData,
-                getInputFormat().isBigEndian(),
-                presampleOutputBuffer.asFloatBuffer(),
-                samples
-        );
-
-        return resample(presampleOutputBuffer, samples, audioBuffer);
-    }
-
-    @Override
-    public int resample(ByteBuffer floatBufferAsBytes, int samples, AudioBuffer out) {
+    public int resample(BiFunction<FloatBuffer, Integer, Integer> in, int in_available,
+                    BiFunction<FloatBuffer, Integer, Integer> out, int out_available) {
         synchronized (nativeLock) {
             if (swrContext == null || swrContext.isNull())
                 throw new RuntimeException("swrContext is null; context has been closed.");
-
-            int outputCount =
-                    (int) Math.min(
+    
+            int outputCount = (int) Math.min(
                             (samples_out[0].limit() - samples_out[0].position()) / (output.getChannels() * output.getBytesPerSample()),
-                            out.availableInput() // 10/14/18: overflow check
-                    );
-
-            samples_in[0].position(0).put(floatBufferAsBytes.array(), 0, samples * 4);
-
-            //Returns number of samples output per channel, negative value on error
-            int ret = swresample.swr_convert(
-                    swrContext,
-                    samples_out_ptr, outputCount,
-                    samples_in_ptr, samples / input.getChannels()
+                            out_available
             );
-
+        
+            int in_produced = in.apply(samples_in[0].position(0).asByteBuffer().asFloatBuffer(), in_available);
+        
+            //Returns number of samples output per channel, negative value on error
+            int out_produced = swresample.swr_convert(
+                            swrContext,
+                            samples_out_ptr, outputCount,
+                            samples_in_ptr, in_produced / input.getChannels()
+            );
+        
             // Check return values
-            if (ret < 0) throw new RuntimeException("swr_convert failed: returned " + ret);
-            else if (ret == 0) return 0; // Do nothing.
-
+            if (out_produced < 0) throw new RuntimeException("swr_convert failed: returned " + out_produced);
+            else if (out_produced == 0) return 0; // Do nothing.
+        
             // Read native sample buffer(s) into managed raw byte array
             // WARNING: This only works if the output format is non-planar (doesn't end with "P")
-
-            int returnedSamples = ret * output.getChannels();
+            int returnedSamples = out_produced * output.getChannels();
             int len = returnedSamples * output.getBytesPerSample();
             if (recvBuffer == null || recvBuffer.length < len)
                 recvBuffer = new byte[len];
-
+        
             samples_out[0].position(0).get(recvBuffer);
-
+        
             // Convert raw data to bytes.
             // This is done by converting the raw samples to floats right out of ffmpeg to preserve the
             // original quality post-resample.
-
-            FloatBuffer buffer = ByteBuffer.wrap(recvBuffer).order(ByteOrder.nativeOrder()).asFloatBuffer();
-            buffer.position(0).limit(returnedSamples);
-
-            // Return total re-sampled bytes to the higher-level audio system.
-            int stored = out.write(buffer, returnedSamples);
-
-            if (stored != returnedSamples)
-                throw new IllegalStateException(
-                        "failed to store samples in resample buffer: "
-                                + returnedSamples + " != " + stored
-                );
-
-            return stored;
+            FloatBuffer floatBuffer = ByteBuffer.wrap(recvBuffer).order(ByteOrder.nativeOrder()).asFloatBuffer();
+            floatBuffer.position(0).limit(returnedSamples);
+            return out.apply(floatBuffer, returnedSamples);
         }
     }
-
+    
     @Override
-    public int flush(AudioBuffer out) {
-        return resample(ByteBuffer.allocate(0), 0, out);
+    public int flush(BiFunction<FloatBuffer, Integer, Integer> out, int out_available) {
+        return resample((buffer, len) -> len, 0, out, out_available);
     }
 
     public static class FFmpegResamplerFactory implements ResamplerFactory {

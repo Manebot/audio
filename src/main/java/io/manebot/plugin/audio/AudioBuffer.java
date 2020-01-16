@@ -12,7 +12,7 @@ public class AudioBuffer {
     private final int size;
     private final float[] buffer;
 
-    private volatile int positon;
+    private int positon;
 
     public AudioBuffer(int size) {
         this.buffer = new float[this.size = size];
@@ -110,6 +110,25 @@ public class AudioBuffer {
             this.positon = 0;
         }
 
+        return x;
+    }
+    
+    public int read(FloatBuffer buffer, int len) {
+        int x = Math.min(len, this.positon);
+        if (x <= 0) return 0;
+    
+        buffer.put(this.buffer, 0, len);
+    
+        // Resize buffer
+        this.positon -= x;
+    
+        // Reclaim free bytes
+        if (this.positon > 0) {
+            System.arraycopy(buffer, x, buffer, 0, this.positon);
+        } else {
+            this.positon = 0;
+        }
+    
         return x;
     }
 }

@@ -54,7 +54,7 @@ public class ResampledAudioProvider extends BufferedAudioProvider implements Aud
         }
 
         // Resample the retrieved samples into the resample buffer
-        resampler.resample(chunk, available, getBuffer());
+        resampler.resample(chunk, available, getBuffer()::write, getBuffer().availableInput());
     }
 
     @Override

@@ -6,9 +6,7 @@ import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -59,8 +57,8 @@ public class BufferedMixer extends AbstractMixer {
             if (len > buffer.length)
                 throw new ArrayIndexOutOfBoundsException(len + " > " + buffer.length);
 
-            // Reset buffers
-            for (int i = 0; i < len; i++) buffer[i] = 0f;
+            // Reset main buffer
+            Arrays.fill(buffer, 0, len, 0F);
 
             Iterator<MixerChannel> channelIterator = getChannels().iterator();
             MixerChannel channel;
@@ -73,9 +71,6 @@ public class BufferedMixer extends AbstractMixer {
                     if (!channel.isPlaying()) {
                         removeChannel(channel);
                     } else {
-                        // Reset mixing buffer
-                        for (int i = 0; i < len; i++) mixBuffer[i] = 0f;
-
                         // Read samples from channel
                         int read = channel.read(mixBuffer, 0, len);
 

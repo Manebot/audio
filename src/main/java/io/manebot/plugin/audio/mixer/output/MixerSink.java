@@ -2,7 +2,7 @@ package io.manebot.plugin.audio.mixer.output;
 
 import javax.sound.sampled.AudioFormat;
 
-public interface MixerSink {
+public interface MixerSink extends AudioConsumer {
 
     default String getName() {
         return getClass().getSimpleName();

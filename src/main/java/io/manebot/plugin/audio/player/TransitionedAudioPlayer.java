@@ -60,13 +60,13 @@ public class TransitionedAudioPlayer extends AudioPlayer {
 
 
     @Override
-    public int read(float[] floats, int offs, int i) throws IOException {
-        if (i <= 0) return 0;
+    public int read(float[] floats, int offs, int len) throws IOException {
+        if (len <= 0) return 0;
 
         int read;
 
         try {
-            read = super.read(floats, 0, i);
+            read = super.read(floats, 0, len);
         } catch (EOFException ex) {
             read = -1;
         }

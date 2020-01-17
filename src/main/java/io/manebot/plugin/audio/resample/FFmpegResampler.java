@@ -184,7 +184,9 @@ public class FFmpegResampler extends Resampler {
                             out_available
             );
         
-            int in_produced = in.apply(samples_in[0].position(0).asByteBuffer().asFloatBuffer(), in_available);
+            FloatBuffer inputBuffer = samples_in[0].position(0).asByteBuffer().asFloatBuffer();
+            int available = Math.min(input.getFrameSize() / 4, in_available);
+            int in_produced = in.apply(inputBuffer, available);
         
             //Returns number of samples output per channel, negative value on error
             int out_produced = swresample.swr_convert(
@@ -209,9 +211,9 @@ public class FFmpegResampler extends Resampler {
             // Convert raw data to bytes.
             // This is done by converting the raw samples to floats right out of ffmpeg to preserve the
             // original quality post-resample.
-            FloatBuffer floatBuffer = ByteBuffer.wrap(recvBuffer).order(ByteOrder.nativeOrder()).asFloatBuffer();
-            floatBuffer.position(0).limit(returnedSamples);
-            return out.apply(floatBuffer, returnedSamples);
+            FloatBuffer outputBuffer = ByteBuffer.wrap(recvBuffer).order(ByteOrder.nativeOrder()).asFloatBuffer();
+            outputBuffer.position(0).limit(returnedSamples);
+            return out.apply(outputBuffer, returnedSamples);
         }
     }
     
@@ -223,7 +225,7 @@ public class FFmpegResampler extends Resampler {
     public static class FFmpegResamplerFactory implements ResamplerFactory {
         @Override
         public Resampler create(AudioFormat in, AudioFormat out, int bufferSize) {
-            return new FFmpegResampler(in, out, bufferSize);
+            return new FFmpegResampler(in, out, bufferSize * in.getChannels());
         }
     }
 

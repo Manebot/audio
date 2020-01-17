@@ -15,14 +15,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.logging.Logger;
 
-public class FFmpegAudioProvider extends BufferedAudioProvider implements Runnable {
+public class FFmpegAudioProvider extends BufferedAudioProvider {
     private final AudioSourceSubstream substream;
-    private final Object nativeLock = new Object();
-    private volatile boolean eof, closed = false;
-
-    private IOException unhandled;
-    private Thread fillThread;
-    private final Object fillLock = new Object();
+    
+    private AudioFrame frame;
+    private int framePosition = 0;
+    private boolean eof, closed = false;
 
     public FFmpegAudioProvider(AudioSourceSubstream substream, int bufferSize) {
         super(bufferSize);
@@ -46,102 +44,14 @@ public class FFmpegAudioProvider extends BufferedAudioProvider implements Runnab
     @Override
     protected void fillBuffer() throws IOException, EOFException {
         if (closed) throw new IllegalStateException();
-
-        synchronized (fillLock) {
-            if (unhandled != null) throw unhandled;
-            if (eof) throw new EOFException();
-
-            // Attempt to revive the pipe thread
-            if (fillThread == null || !fillThread.isAlive())
-                (fillThread = new Thread(this)).start();
-
-            while (getBuffer().availableOutput() <= 0 && fillThread != null && fillThread.isAlive()) {
-                fillLock.notifyAll();
-
-                try {
-                    fillLock.wait();
-                } catch (InterruptedException e) {
-                    throw new IOException(e);
-                }
-
-                if (unhandled != null) throw unhandled;
+    
+        while (getBuffer().availableInput() > 0) {
+            if (frame == null || framePosition >= frame.getLength()) {
+                frame = substream.next();
+                framePosition = 0;
             }
-        }
-    }
-
-    @Override
-    public int read(float[] buffer, int offs, int len) throws IOException, EOFException {
-        int read = super.read(buffer, offs, len);
-
-        if (read > 0 && getBuffer().availableInput() > 0 && fillThread != null && fillThread.isAlive()) {
-            synchronized (fillLock) {
-                fillLock.notifyAll();
-            }
-        }
-        
-        if (read <= 0 && unhandled != null)
-            throw unhandled;
-
-        return read;
-    }
-
-    @Override
-    public void run() {
-        AudioFrame frame = null;
-        int framePosition = 0;
-
-        try {
-            while (!closed) {
-                while (!closed && getBuffer().availableInput() > 0) {
-                    if (frame == null || framePosition >= frame.getLength()) {
-                        try {
-                            synchronized (nativeLock) {
-                                if (closed) throw new IllegalStateException();
-                                frame = substream.next();
-                            }
-
-                            framePosition = 0;
-                        } catch (EOFException eof) {
-                            return;
-                        }
-
-                        if (frame == null) continue; // try again
-                    }
-
-                    int len = Math.min(getBuffer().availableInput(), frame.getLength() - framePosition);
-
-                    int written = getBuffer().write(
-                            frame.getSamples(),
-                            framePosition,
-                            len
-                    );
-
-                    framePosition += written;
-
-                    if (written > 0) {
-                        synchronized (fillLock) {
-                            fillLock.notifyAll();
-                        }
-                    }
-                }
-
-                synchronized (fillLock) {
-                    fillLock.notifyAll();
-                    fillLock.wait();
-                }
-            }
-        } catch (InterruptedException ex) {
-            // ignore
-        } catch (IOException ex) {
-            this.unhandled = ex;
-        } catch (Throwable ex) {
-            this.unhandled = new IOException("Unexpected problem in audio pipe thread", ex);
-        } finally {
-            synchronized (fillLock) {
-                fillThread = null;
-                eof = true;
-                fillLock.notifyAll();
-            }
+    
+            framePosition += getBuffer().write(frame.getSamples(), framePosition, Math.min(getBuffer().availableInput(), frame.getLength() - framePosition));
         }
     }
 
@@ -157,19 +67,9 @@ public class FFmpegAudioProvider extends BufferedAudioProvider implements Runnab
 
     @Override
     public void close() throws Exception {
-        boolean acted = false;
-
-        synchronized (nativeLock) {
-            if (!closed) {
-                substream.getParent().close();
-                closed = true;
-                acted = true;
-            }
-        }
-
-        if (acted && fillThread != null && fillThread.isAlive()) {
-            fillThread.interrupt();
-            fillThread = null;
+        if (!closed) {
+            substream.getParent().close();
+            closed = true;
         }
     }
 

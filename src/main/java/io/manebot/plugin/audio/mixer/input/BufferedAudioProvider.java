@@ -51,7 +51,7 @@ public abstract class BufferedAudioProvider implements AudioProvider {
         boolean eof = false;
 
         while (!eof && pos < len) {
-            while (!eof && this.buffer.availableOutput() <= 0) {
+            while (!eof && this.buffer.availableInput() > 0) {
                 try {
                     fillBuffer();
                 } catch (EOFException ex) {

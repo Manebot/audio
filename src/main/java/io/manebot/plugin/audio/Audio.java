@@ -155,6 +155,14 @@ public class Audio implements PluginReference {
                 .flatMap(connection -> connection.getChannels().stream())
                 .collect(Collectors.toList());
     }
+    
+    private SoftFilter createSoftFilter(float sampleRate, float frequency, float resonance) {
+        SoftFilter filter = new SoftFilter(sampleRate);
+        filter.setFilterType(SoftFilter.FILTERTYPE_BP12);
+        filter.setFrequency(frequency);
+        filter.setResonance(resonance);
+        return filter;
+    }
 
     public Collection<Function<Mixer, MultiChannelFilter>> getDefaultFilters(float sampleRate, int channels) {
         return Arrays.asList(
@@ -164,8 +172,7 @@ public class Audio implements PluginReference {
                     float compressorRatio = Float.parseFloat(plugin.getProperty("compressorRatio", "1"));
                     float compressorKnee = Float.parseFloat(plugin.getProperty("compressorKnee", "0"));
                     return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterCompressor(
-                            sampleRate,
-                            compressorTheshold, compressorRatio, compressorKnee
+                            sampleRate, compressorTheshold, compressorRatio, compressorKnee
                     ));
                 },
                 mixer -> {
@@ -173,15 +180,8 @@ public class Audio implements PluginReference {
                     float subBassResonance = Float.parseFloat(plugin.getProperty("subBassResonance", "1"));
                     float subBassWet = Float.parseFloat(plugin.getProperty("subBassWet", "0.35"));
                     float subBassDry = Float.parseFloat(plugin.getProperty("subBassDry", "0.65"));
-
-                    SoftFilter subBassFilter = new SoftFilter(sampleRate);
-                    subBassFilter.setFilterType(SoftFilter.FILTERTYPE_BP12);
-                    subBassFilter.setFrequency(subBassFrequency);
-                    subBassFilter.setResonance(subBassResonance);
-
                     return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterBandPass(
-                            sampleRate,
-                            subBassFilter, subBassWet, subBassDry
+                            sampleRate, createSoftFilter(sampleRate, subBassFrequency, subBassResonance), subBassWet, subBassDry
                     ));
                 },
                 mixer -> {
@@ -189,15 +189,8 @@ public class Audio implements PluginReference {
                     float bassResonance = Float.parseFloat(plugin.getProperty("bassResonance", "1"));
                     float bassWet = Float.parseFloat(plugin.getProperty("bassWet", "0.5"));
                     float bassDry = Float.parseFloat(plugin.getProperty("bassDry", "0.5"));
-
-                    SoftFilter bassFilter = new SoftFilter(sampleRate);
-                    bassFilter.setFilterType(SoftFilter.FILTERTYPE_BP12);
-                    bassFilter.setFrequency(bassFrequency);
-                    bassFilter.setResonance(bassResonance);
-
                     return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterBandPass(
-                            sampleRate,
-                            bassFilter, bassWet, bassDry
+                            sampleRate, createSoftFilter(sampleRate, bassFrequency, bassResonance), bassWet, bassDry
                     ));
                 },
                 mixer -> {
@@ -205,14 +198,8 @@ public class Audio implements PluginReference {
                     float midResonance = Float.parseFloat(plugin.getProperty("midResonance", "1"));
                     float midWet = Float.parseFloat(plugin.getProperty("midWet", "0.15"));
                     float midDry = Float.parseFloat(plugin.getProperty("midDry", "0.85"));
-                    SoftFilter midFilter = new SoftFilter(mixer.getAudioSampleRate());
-                    midFilter.setFilterType(SoftFilter.FILTERTYPE_BP12);
-                    midFilter.setFrequency(midFrequency);
-                    midFilter.setResonance(midResonance);
-
                     return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterBandPass(
-                            sampleRate,
-                            midFilter, midWet, midDry
+                            sampleRate, createSoftFilter(sampleRate, midFrequency, midResonance), midWet, midDry
                     ));
                 },
                 mixer -> {
@@ -220,10 +207,8 @@ public class Audio implements PluginReference {
                     float limiterAttack = Float.parseFloat(plugin.getProperty("limiterAttack", "1"));
                     float limiterRelease = Float.parseFloat(plugin.getProperty("limiterRelease", "0.0001"));
                     float limiterSlope = Float.parseFloat(plugin.getProperty("limiterSlope", "0.5"));
-
                     return MuxedMultiChannelFilter.from(channels, (ch) -> new FilterLimiter(
-                            sampleRate,
-                            limiterThreshold, limiterAttack, limiterRelease, limiterSlope
+                            sampleRate, limiterThreshold, limiterAttack, limiterRelease, limiterSlope
                     ));
                 },
                 mixer -> MuxedMultiChannelFilter.from(channels, (ch) -> new FilterSoftClip(sampleRate))

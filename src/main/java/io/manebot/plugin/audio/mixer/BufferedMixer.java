@@ -18,12 +18,10 @@ public class BufferedMixer extends AbstractMixer {
     private boolean filtering = true;
     private long position = 0L;
 
-    public BufferedMixer(String id,
-                         MixerRegistrant registrant,
-                         int bufferSize,
-                         float audioSampleRate,
-                         int audioChannels) {
-        super(id, registrant, bufferSize, audioSampleRate, audioChannels);
+    public BufferedMixer(Audio audio, String id,
+                    MixerRegistrant registrant,
+                    int bufferSize, float audioSampleRate, int audioChannels) {
+        super(audio, id, registrant, bufferSize, audioSampleRate, audioChannels);
 
         this.buffer = new float[bufferSize];
         this.mixBuffer = new float[bufferSize];
@@ -200,7 +198,7 @@ public class BufferedMixer extends AbstractMixer {
             int frames = Math.round(sampleRate * bufferTime);
             int samples = frames * channels;
 
-            BufferedMixer mixer = new BufferedMixer(id, registrant, samples, sampleRate, channels);
+            BufferedMixer mixer = new BufferedMixer(audio, id, registrant, samples, sampleRate, channels);
 
             for (MixerSink sink : sinks)
                 mixer.addSink(sink);

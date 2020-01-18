@@ -3,6 +3,8 @@ package io.manebot.plugin.audio.channel;
 import io.manebot.conversation.Conversation;
 import io.manebot.platform.Platform;
 import io.manebot.platform.PlatformUser;
+import io.manebot.plugin.audio.*;
+import io.manebot.plugin.audio.event.channel.*;
 import io.manebot.plugin.audio.mixer.Mixer;
 import io.manebot.plugin.audio.mixer.input.AudioProvider;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
@@ -12,7 +14,6 @@ import io.manebot.user.UserAssociation;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -23,8 +24,6 @@ public abstract class AudioChannel {
     private final AudioChannelRegistrant owner;
     private final List<AudioPlayer> players = new ArrayList<>();
     private final Map<PlatformUser, AudioProvider> providerMap = Collections.synchronizedMap(new LinkedHashMap<>());
-    private final List<Listener> listeners = new LinkedList<>();
-
     private final ReentrantLock lock = new ReentrantLock();
 
     private boolean idle = false;
@@ -141,10 +140,13 @@ public abstract class AudioChannel {
      * @return true if the player was registered, false otherwise.
      */
     public boolean addPlayer(AudioPlayer player) {
+        Objects.requireNonNull(player, "player");
+        
         try {
             if (!isRegistered())
                 throw new IllegalStateException("not registered");
 
+            Mixer mixer = getMixer();
             if (mixer == null) throw new NullPointerException("mixer");
 
             // Check for maximum player count if we are adding a blocking player.
@@ -152,11 +154,12 @@ public abstract class AudioChannel {
 
             // Add channel to mixer.
             CompletableFuture<MixerChannel> future = mixer.addChannel(player);
-            if (future == null) return false;
+            if (future == null) throw new NullPointerException("future");
 
             onChannelAdded(player);
 
-            fireListenerAction(x -> x.onPlayerAdded(this, player));
+            Audio audio = mixer.getAudio();
+            audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelPlayerAddedEvent(this, audio, this, player));
 
             if (isIdle())
                 setIdle(false);
@@ -165,7 +168,7 @@ public abstract class AudioChannel {
 
             return true;
         } catch (Exception e) {
-            Logger.getGlobal().log(Level.SEVERE, "Problem adding audio player to channel", e);
+            Logger.getGlobal().log(Level.WARNING, "Problem adding audio player to channel", e);
             return false;
         }
     }
@@ -176,16 +179,9 @@ public abstract class AudioChannel {
 
     protected final Ownership obtain(UserAssociation association) {
         if (lock.isHeldByCurrentThread()) {
-            return new Ownership(association) {
-                @Override
-                public void close() throws Exception {
-                    fireListenerAction(x -> x.onOwnershipReleased(AudioChannel.this, association));
-                }
-            };
+            return new PassiveOwnership(association);
         } else {
-            Ownership o = new Ownership(association);
-            lock.lock();
-            return o;
+            return new ActiveOwnership(association);
         }
     }
 
@@ -200,15 +196,19 @@ public abstract class AudioChannel {
         try {
             ownership = obtain(association);
 
-            fireListenerAction(x -> x.onOwnershipObtained(AudioChannel.this, association));
-
+            if (ownership.holdsLock()) {
+                Mixer mixer = getMixer();
+                Audio audio = mixer.getAudio();
+                audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelLockedEvent(this, audio, this, association));
+            }
+            
             return ownership;
         } catch (Throwable e) {
             if (ownership != null)
                 try {
                     ownership.close();
                 } catch (Exception e1) {
-                    Logger.getGlobal().log(Level.SEVERE, "Problem closing ownership after exception", e1);
+                    e.addSuppressed(e1);
                 }
 
             throw e;
@@ -220,25 +220,32 @@ public abstract class AudioChannel {
     }
 
     public boolean setProvider(PlatformUser user, AudioProvider provider) {
-        Objects.requireNonNull(user);
-        Objects.requireNonNull(provider);
+        Objects.requireNonNull(user, "user");
+        Objects.requireNonNull(provider, "provider");
 
         boolean added;
         synchronized (providerMap) {
             added = providerMap.put(user, provider) != provider;
         }
-        if (added) fireListenerAction(x -> x.onProviderStarted(this, user, provider));
+        if (added) {
+            Audio audio = getMixer().getAudio();
+            audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelUserBeginEvent(this, audio, this, user, provider));
+        }
         return added;
     }
 
     public boolean removeProvider(PlatformUser user) {
         Objects.requireNonNull(user);
-
-        boolean removed;
+    
+        AudioProvider provider;
         synchronized (providerMap) {
-            removed = providerMap.remove(user) != null;
+            provider = providerMap.remove(user);
         }
-        if (removed) fireListenerAction(x -> x.onProviderStopped(this, user));
+        boolean removed = provider == null;
+        if (removed) {
+            Audio audio = getMixer().getAudio();
+            audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelUserEndEvent(this, audio, this, user, provider));
+        }
         return removed;
     }
 
@@ -267,18 +274,16 @@ public abstract class AudioChannel {
         return idle;
     }
 
-    private final void fireListenerAction(Consumer<? super Listener> action) {
-        new ArrayList<>(listeners).forEach(action);
-    }
-
     private void onChannelAdded(MixerChannel channel) {
+        Objects.requireNonNull(channel, "channel");
+        
         // NOTE: my "&" character here is intended!
         if (this.players.size() <= 0 & this.players.add((AudioPlayer)channel))
             owner.onChannelActivated(this);
     }
 
     private void onChannelRemoved(MixerChannel channel) {
-        if (channel == null) throw new NullPointerException();
+        Objects.requireNonNull(channel, "channel");
 
         try {
             channel.close();
@@ -286,7 +291,7 @@ public abstract class AudioChannel {
             Logger.getGlobal().log(Level.SEVERE, "Problem closing mixer channel", e);
         }
 
-        if (!players.remove((AudioPlayer)channel))
+        if (!players.remove((AudioPlayer) channel))
             throw new IllegalArgumentException("Failed to remove audio player");
 
         if (players.size() <= 0)
@@ -323,70 +328,74 @@ public abstract class AudioChannel {
         return registered;
     }
 
-    public boolean registerListener(Listener listener) {
-        if (this.listeners.add(listener)) {
-            listener.onRegistered(this);
-
-            List<UserAssociation> activeListeners = getRegisteredListeners();
-            for (UserAssociation user : activeListeners) listener.onJoin(this, user);
-
-            synchronized (this.providerMap) {
-                for (Map.Entry<PlatformUser, AudioProvider> entry : providerMap.entrySet())
-                    listener.onProviderStarted(this, entry.getKey(), entry.getValue());
-            }
-
-            return true;
-        } else return false;
-    }
-
-    public boolean unregisterListener(Listener listener) {
-        if (this.listeners.remove(listener)) {
-            listener.onUnregistered(this);
-            return true;
-        } else return false;
-    }
-
     public enum State {
         PLAYING,
         WAITING
     }
+    
+    public interface Ownership extends AutoCloseable {
+        AudioChannel getChannel();
+        UserAssociation getAssociation();
+        boolean holdsLock();
+    }
 
-    public class Ownership implements AutoCloseable {
+    public class PassiveOwnership implements Ownership {
         private final UserAssociation association;
 
-        public Ownership(UserAssociation association) {
+        public PassiveOwnership(UserAssociation association) {
             this.association = association;
         }
 
+        @Override
         public final AudioChannel getChannel() {
             return AudioChannel.this;
         }
 
+        @Override
         public UserAssociation getAssociation() {
             return association;
         }
-
+    
+        @Override
+        public boolean holdsLock() {
+            return false;
+        }
+    
+        @Override
+        public void close() throws Exception {
+            // Do nothing
+        }
+    }
+    
+    public class ActiveOwnership implements Ownership {
+        private final UserAssociation association;
+        
+        public ActiveOwnership(UserAssociation association) {
+            this.association = association;
+        }
+        
+        @Override
+        public final AudioChannel getChannel() {
+            return AudioChannel.this;
+        }
+        
+        @Override
+        public UserAssociation getAssociation() {
+            return association;
+        }
+    
+        @Override
+        public boolean holdsLock() {
+            return true;
+        }
+    
         @Override
         public void close() throws Exception {
             lock.unlock();
-
-            fireListenerAction(x -> x.onOwnershipReleased(AudioChannel.this, association));
+    
+            Mixer mixer = getMixer();
+            Audio audio = mixer.getAudio();
+            audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelUnlockedEvent(this, audio, AudioChannel.this, getAssociation()));
         }
-    }
-
-    public interface Listener {
-        default void onRegistered(AudioChannel channel) {}
-        default void onUnregistered(AudioChannel channel) {}
-
-        default void onProviderStarted(AudioChannel channel, PlatformUser user, AudioProvider provider) {}
-        default void onProviderStopped(AudioChannel channel, PlatformUser user) {}
-
-        default void onJoin(AudioChannel channel, UserAssociation association) {}
-        default void onLeave(AudioChannel channel, UserAssociation association) {}
-
-        default void onPlayerAdded(AudioChannel channel, AudioPlayer player) {}
-
-        default void onOwnershipObtained(AudioChannel channel, UserAssociation association) {}
-        default void onOwnershipReleased(AudioChannel channel, UserAssociation association) {}
     }
 }

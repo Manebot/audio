@@ -2,6 +2,7 @@ package io.manebot.plugin.audio.api;
 
 import io.manebot.plugin.audio.Audio;
 import io.manebot.plugin.audio.channel.AudioChannel;
+import io.manebot.plugin.audio.event.api.*;
 import io.manebot.plugin.audio.mixer.Mixer;
 import io.manebot.plugin.audio.util.LoopTimer;
 import io.manebot.virtual.Profiler;
@@ -167,12 +168,12 @@ public abstract class AbstractAudioConnection implements AudioConnection {
         public void run() {
             try {
                 running = true;
-
+    
                 Virtual.getInstance().currentProcess().setDescription("AudioThread");
-
+    
                 LoopTimer timer = new LoopTimer(audio.getLoopDelay(), audioLock);
                 List<Mixer> playingMixers = new ArrayList<>();
-
+    
                 synchronized (audioLock) {
                     while (running && isConnected() && audio.getPlugin().isEnabled()) {
                         try (Profiler audioProfiler = Profiler.region("audio")) {
@@ -182,65 +183,56 @@ public abstract class AbstractAudioConnection implements AudioConnection {
                                     // If mixer is running, stop the mixer since no players are playing.
                                     if (mixer.isRunning()) {
                                         Logger.getGlobal().fine("Stopping mixer: " + mixer.getId() + "...");
-
+    
                                         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
                                         mixer.setRunning(false);
-
+    
                                         Logger.getGlobal().fine("Stopped mixer: " + mixer.getId() + ".");
                                     }
                                 } else {
                                     playingMixers.add(mixer);
                                 }
                             }
-
+    
                             if (playingMixers.size() <= 0) {
                                 audioLock.wait(1000L); // I see the point now
                                 continue;
                             }
-
+    
                             for (Mixer mixer : playingMixers) {
                                 // Play audio on system
                                 try {
                                     // Start the mixer if it's not running
                                     if (!mixer.isRunning()) {
                                         Logger.getGlobal().fine("Starting mixer: " + mixer.getId() + "...");
-
+    
                                         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
-
+    
                                         Logger.getGlobal().fine("Started mixer: " + mixer.getId() + ".");
                                         mixer.setRunning(true);
                                     }
-
+    
                                     mixer.processBuffer();
                                 } catch (Exception ex) {
-                                    Virtual.getInstance().getLogger().log(
-                                            Level.SEVERE,
-                                            "Problem processing Mixer buffer; emptying mixer",
-                                            ex
-                                    );
-
+                                    Virtual.getInstance().getLogger().log(Level.SEVERE, "Problem processing Mixer buffer; emptying mixer", ex);
                                     mixer.empty();
                                 }
                             }
-
+    
                             // Clear the list to wipe clean
                             playingMixers.clear();
-
+    
                             // Sleep for designated amount of time
                             try (Profiler sleepProfiler = Profiler.region("sleep")) {
                                 timer.sleep();
-                            } catch (InterruptedException e) {
-                                Thread.yield();
                             }
                         }
                     }
                 }
+            } catch (InterruptedException ex) {
+                Virtual.getInstance().getLogger().log(Level.FINE, "Mixer was interrupted", ex);
             } catch (Throwable ex) {
-                Virtual.getInstance().getLogger().log(
-                        Level.SEVERE,
-                        "Problem in AudioPlugin processor main thread; shutting down audio",
-                        ex
-                );
+                Virtual.getInstance().getLogger().log(Level.SEVERE, "Problem in AudioPlugin processor main thread; shutting down audio", ex);
             } finally {
                 running = false;
 

@@ -24,6 +24,8 @@ import java.util.function.Function;
  * Filter - mixer filters are used to morph data (i.e. clip protection, EQs, stuff)
  */
 public interface Mixer {
+    
+    Audio getAudio();
 
     String getId();
 

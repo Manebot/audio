@@ -5,6 +5,7 @@ import io.manebot.command.CommandSender;
 import io.manebot.command.exception.CommandArgumentException;
 import io.manebot.command.exception.CommandExecutionException;
 import io.manebot.conversation.Conversation;
+import io.manebot.event.*;
 import io.manebot.platform.Platform;
 import io.manebot.plugin.Plugin;
 import io.manebot.plugin.PluginReference;
@@ -12,6 +13,7 @@ import io.manebot.plugin.audio.api.AudioRegistration;
 import io.manebot.plugin.audio.api.DefaultAudioRegistration;
 
 import io.manebot.plugin.audio.channel.AudioChannel;
+import io.manebot.plugin.audio.event.api.*;
 import io.manebot.plugin.audio.mixer.BufferedMixer;
 import io.manebot.plugin.audio.mixer.Mixer;
 import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
@@ -78,21 +80,36 @@ public class Audio implements PluginReference {
     }
 
     public AudioRegistration createRegistration(Platform platform, Consumer<AudioRegistration.Builder> consumer) {
+        if (registrationMap.containsKey(platform))
+            throw new IllegalStateException(platform.getId() + " has already registered with audio");
+        
         DefaultAudioRegistration.Builder builder = new DefaultAudioRegistration.Builder(this, platform);
         consumer.accept(builder);
 
         DefaultAudioRegistration registration = builder.build();
 
-        if (plugin.isEnabled()) registration.getConnection().connect();
-
         registrationMap.put(platform, registration);
+    
+        plugin.getBot().getEventDispatcher().execute(new AudioRegistrationCreatedEvent(this, this, registration));
+    
+        if (plugin.isEnabled()) {
+            registration.getConnection().connect();
+        }
 
         return registration;
     }
 
     public AudioRegistration removeRegistration(Platform platform) {
-        AudioRegistration registration = registrationMap.remove(platform);
-        registration.getConnection().disconnect();
+        AudioRegistration registration = registrationMap.get(platform);
+        if (registration == null)
+            return null;
+        
+        if (registration.getConnection().isConnected())
+            registration.getConnection().disconnect();
+        
+        registrationMap.remove(platform);
+        plugin.getBot().getEventDispatcher().execute(new AudioRegistrationRemovedEvent(this, this, registration));
+        
         return registration;
     }
 

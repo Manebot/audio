@@ -59,7 +59,7 @@ public final class DefaultAudioRegistration implements AudioRegistration {
         }
 
         public DefaultAudioRegistration build() {
-            return new DefaultAudioRegistration(audio, platform, Objects.requireNonNull(connection));
+            return new DefaultAudioRegistration(audio, platform, Objects.requireNonNull(connection, "connection not supplied"));
         }
     }
 }

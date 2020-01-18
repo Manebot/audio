@@ -1,6 +1,6 @@
 package io.manebot.plugin.audio.mixer;
 
-import io.manebot.plugin.audio.mixer.filter.Filter;
+import io.manebot.plugin.audio.*;
 import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
 import io.manebot.plugin.audio.mixer.filter.MuxedMultiChannelFilter;
 import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public abstract class AbstractMixer implements Mixer {
+    private final Audio audio;
     private final String id;
     private final int bufferSize;
 
@@ -27,15 +28,21 @@ public abstract class AbstractMixer implements Mixer {
 
     private final Object channelLock = new Object();
 
-    public AbstractMixer(String id,
-                         MixerRegistrant registrant,
-                         int bufferSize, float audioSampleRate, int audioChannels) {
+    public AbstractMixer(Audio audio, String id,
+                    MixerRegistrant registrant,
+                    int bufferSize, float audioSampleRate, int audioChannels) {
+        this.audio = audio;
         this.id = id;
         this.registrant = registrant;
         this.bufferSize = bufferSize;
 
         this.audioSampleRate = audioSampleRate;
         this.audioChannels = audioChannels;
+    }
+    
+    @Override
+    public Audio getAudio() {
+        return audio;
     }
 
     @Override

@@ -181,6 +181,7 @@ public abstract class AudioChannel {
         if (lock.isHeldByCurrentThread()) {
             return new PassiveOwnership(association);
         } else {
+            lock.lock();
             return new ActiveOwnership(association);
         }
     }

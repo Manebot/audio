@@ -2,7 +2,7 @@
 
 This is the official audio plugin for my multi-platform chatbot, Manebot.  This plugin provides audio support for plugins such as Teamspeak and Discord, and acts as a foundation for the Music plugin and its associated plugins.
 
-This is simply an API, and doesn't play music tracks on its own, although it's all a platform needs to support those features.  To see the dependency that does, check out `music`: https://github.com/Manevolent/manebot-music
+This is simply an API, and doesn't play music tracks on its own, although it's all a platform needs to support those features.  To see the dependency that does, check out `music`: https://github.com/manebot/music
 
 ## Commands
 
@@ -41,8 +41,8 @@ You can do any work you need to do with the audio subsystem with the `Audio` cla
 ### Offering audio support from your platform plugin
 
 See working examples of how it was done in the **Discord** or **Teamspeak3** plugins:
-* https://github.com/Manevolent/manebot-discord/blob/master/src/main/java/io/manebot/plugin/discord/Entry.java
-* https://github.com/Manevolent/manebot-ts3/blob/master/src/main/java/io/manebot/plugin/ts3/Entry.java
+* https://github.com/manebot/discord/blob/master/src/main/java/io/manebot/plugin/discord/Entry.java
+* https://github.com/manebot/ts3/blob/master/src/main/java/io/manebot/plugin/ts3/Entry.java
 
 First, extend and construct an `AudioConnection` class:
 

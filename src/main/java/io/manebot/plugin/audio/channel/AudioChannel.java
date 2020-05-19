@@ -1,6 +1,7 @@
 package io.manebot.plugin.audio.channel;
 
 import io.manebot.conversation.Conversation;
+import io.manebot.event.EventDispatcher;
 import io.manebot.platform.Platform;
 import io.manebot.platform.PlatformUser;
 import io.manebot.plugin.audio.*;
@@ -136,41 +137,39 @@ public abstract class AudioChannel {
 
     /**
      * Adds a player to this channel.
-     * @param player
-     * @return true if the player was registered, false otherwise.
+     * @param player player to add to the channel.
+     * @throws IllegalStateException if the channel cannot accept any more blocking players.
      */
-    public boolean addPlayer(AudioPlayer player) {
+    public void addPlayer(AudioPlayer player) throws IllegalStateException {
         Objects.requireNonNull(player, "player");
-        
-        try {
-            if (!isRegistered())
-                throw new IllegalStateException("not registered");
 
-            Mixer mixer = getMixer();
-            if (mixer == null) throw new NullPointerException("mixer");
+        if (!isRegistered())
+            throw new IllegalStateException("not registered");
 
-            // Check for maximum player count if we are adding a blocking player.
-            if (player.isBlocking() && getBlockingPlayers() >= getMaximumPlayers()) return false;
+        Mixer mixer = Objects.requireNonNull(getMixer(), "mixer");
 
-            // Add channel to mixer.
-            CompletableFuture<MixerChannel> future = mixer.addChannel(player);
-            if (future == null) throw new NullPointerException("future");
-
-            onChannelAdded(player);
-
-            Audio audio = mixer.getAudio();
-            audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelPlayerAddedEvent(this, audio, this, player));
-
-            if (isIdle())
-                setIdle(false);
-
-            future.thenAcceptAsync(this::onChannelRemoved);
-
-            return true;
-        } catch (Exception e) {
-            Logger.getGlobal().log(Level.WARNING, "Problem adding audio player to channel", e);
-            return false;
+        // Check for maximum player count if we are adding a blocking player.
+        int blockingPlayers = getBlockingPlayers();
+        if (player.isBlocking() && blockingPlayers >= getMaximumPlayers()) {
+            throw new IllegalStateException(blockingPlayers == 1 ?
+                    "A track is already playing on this channel." :
+                    blockingPlayers + " tracks are already playing on this channel."
+            );
         }
+
+        // Add channel to mixer.
+        CompletableFuture<MixerChannel> future = Objects.requireNonNull(mixer.addChannel(player), "future");
+
+        onChannelAdded(player);
+
+        Audio audio = mixer.getAudio();
+        EventDispatcher dispatcher = audio.getPlugin().getBot().getEventDispatcher();
+        dispatcher.execute(new AudioChannelPlayerAddedEvent(this, audio, this, player));
+
+        if (isIdle())
+            setIdle(false);
+
+        future.thenAcceptAsync(this::onChannelRemoved);
     }
 
     public AudioChannelRegistrant getRegistrant() {

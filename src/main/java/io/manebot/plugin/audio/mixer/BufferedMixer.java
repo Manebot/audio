@@ -6,6 +6,7 @@ import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
 import io.manebot.plugin.audio.mixer.input.MixerChannel;
 import io.manebot.plugin.audio.mixer.output.MixerSink;
 
+import java.io.EOFException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -76,8 +77,10 @@ public class BufferedMixer extends AbstractMixer {
                         for (int i = 0; i < read; i++)
                             buffer[i] += mixBuffer[i];
                     }
+                } catch (EOFException eof) {
+                    removeChannel(channel);
                 } catch (Throwable e) {
-                    Logger.getGlobal().log(Level.SEVERE, "Problem playing audio on channel", e);
+                    Logger.getGlobal().log(Level.SEVERE, "Unexpected problem playing audio on channel", e);
                     removeChannel(channel);
                 }
             }

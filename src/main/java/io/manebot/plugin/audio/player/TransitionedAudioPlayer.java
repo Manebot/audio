@@ -13,6 +13,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class TransitionedAudioPlayer extends AudioPlayer {
+    private static final double minimumVolume = 1d / Math.pow(2D, 32);
+
     private final Callback callback;
 
     private long position = 0L;
@@ -55,7 +57,19 @@ public class TransitionedAudioPlayer extends AudioPlayer {
 
     @Override
     public int available() {
-        return state != State.CLOSED ? super.available() : 0;
+        int available = super.available();
+
+        switch (state) {
+            case FADE_OUT:
+                // Force a flush of the transitioned player by forcing the caller to read all the remaining samples
+                // if the super claims an availability of "0".
+                return available > 0 ? available : Integer.MAX_VALUE;
+            case CLOSED:
+                // Force the available samples to 0
+                return 0;
+            default:
+                return available;
+        }
     }
 
 
@@ -68,22 +82,24 @@ public class TransitionedAudioPlayer extends AudioPlayer {
         try {
             read = super.read(floats, 0, len);
         } catch (EOFException ex) {
-            read = -1;
+            try {
+                setState(State.CLOSED);
+            } catch (Exception e) {
+                ex.addSuppressed(e);
+            }
+
+            throw ex;
         }
 
         try {
-            if (read <= 0) {
-                setState(State.CLOSED);
-            } else {
-                float volume;
-                for (int x = 0; x < read; x += getChannels()) {
-                    volume = volumeAtPosition(position + x) * (float) volumeProperty.getDouble();
-                    for (int ch = 0; ch < getChannels(); ch++)
-                        floats[offs + x + ch] *= volume;
-                }
-
-                position += read;
+            float volume;
+            for (int x = 0; x < read; x += getChannels()) {
+                volume = volumeAtPosition(position + x) * (float) volumeProperty.getDouble();
+                for (int ch = 0; ch < getChannels(); ch++)
+                    floats[offs + x + ch] *= volume;
             }
+
+            position += read;
         } catch (Exception ex) {
             throw new IOException(ex);
         }
@@ -146,8 +162,9 @@ public class TransitionedAudioPlayer extends AudioPlayer {
                 f = 1f - ((float)(Math.pow(timeInSeconds - closeTimeInSeconds, 0.5d) /
                         Math.pow(transitionTimeInSeconds, 0.5d)));
 
-                // Handle cancellation by finding if the audio is too quiet to be heard.
-                if (f <= (1f / Math.pow(2D, 32))) {
+                // Handle cancellation by finding if the audio is too quiet to be heard or
+                // if the track's normal/pre-determined length is exceeded.
+                if (f <= minimumVolume || timeInSeconds >= durationInSeconds) {
                     setState(State.CLOSED);
                 } else {
                     f= Math.max(0f, Math.min(1f, Math.min(
@@ -157,7 +174,7 @@ public class TransitionedAudioPlayer extends AudioPlayer {
 
                     return f;
                 }
-            case CLOSED: // (kek)
+            case CLOSED:
                 return 0f;
             default:
                 return 0f;

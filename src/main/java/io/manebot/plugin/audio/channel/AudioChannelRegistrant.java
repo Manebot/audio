@@ -1,5 +1,6 @@
 package io.manebot.plugin.audio.channel;
 
+import io.manebot.plugin.audio.mixer.MixerRegistrant;
 import io.manebot.plugin.audio.player.AudioPlayer;
 
 public interface AudioChannelRegistrant {
@@ -10,11 +11,17 @@ public interface AudioChannelRegistrant {
     void onChannelPassivated(AudioChannel channel);
 
     default void onChannelSleep(AudioChannel channel) {
-        channel.getMixer().getRegistrant().onChannelSleep(channel.getMixer(), channel);
+        MixerRegistrant registrant = channel.getMixer().getRegistrant();
+        if (registrant != null) {
+            registrant.onChannelSleep(channel.getMixer(), channel);
+        }
     }
 
     default void onChannelWake(AudioChannel channel) {
-        channel.getMixer().getRegistrant().onChannelWake(channel.getMixer(), channel);
+        MixerRegistrant registrant = channel.getMixer().getRegistrant();
+        if (registrant != null) {
+            registrant.onChannelWake(channel.getMixer(), channel);
+        }
     }
 
     default void onChannelUnregistered(AudioChannel channel) {

@@ -40,7 +40,7 @@
 	
     <groupId>io.manebot.plugin</groupId>
     <artifactId>audio</artifactId>
-    <version>0.1.10.31</version>
+    <version>0.1.10.32</version>
 
     <build>
         <plugins>

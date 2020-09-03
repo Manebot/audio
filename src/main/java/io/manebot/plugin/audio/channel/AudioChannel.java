@@ -309,8 +309,6 @@ public abstract class AudioChannel {
         if (!players.remove((AudioPlayer) channel))
             throw new IllegalArgumentException("Failed to remove audio player");
 
-        setIdle(true);
-
         if (players.size() <= 0) {
             owner.onChannelPassivated(this);
         }

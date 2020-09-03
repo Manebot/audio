@@ -1,6 +1,7 @@
 package io.manebot.plugin.audio.channel;
 
 import io.manebot.conversation.Conversation;
+import io.manebot.event.Event;
 import io.manebot.event.EventDispatcher;
 import io.manebot.platform.Platform;
 import io.manebot.platform.PlatformUser;
@@ -13,6 +14,7 @@ import io.manebot.plugin.audio.player.AudioPlayer;
 import io.manebot.user.UserAssociation;
 
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -20,6 +22,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public abstract class AudioChannel {
+    private static int defaultMaximumQueueSize = 3;
 
     private final Mixer mixer;
     private final AudioChannelRegistrant owner;
@@ -84,6 +87,14 @@ public abstract class AudioChannel {
      * @return Channel listener list.
      */
     public abstract List<PlatformUser> getListeners();
+
+    /**
+     * Gets the maximum count of tracks that may be queued.
+     * @return maximum count of tracks that may be queued.
+     */
+    public int getMaximumQueueSize() {
+        return defaultMaximumQueueSize;
+    }
 
     /**
      * Gets a list of active listeners in this channel.
@@ -199,7 +210,9 @@ public abstract class AudioChannel {
             if (ownership.holdsLock()) {
                 Mixer mixer = getMixer();
                 Audio audio = mixer.getAudio();
-                audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelLockedEvent(this, audio, this, association));
+
+                Event event = new AudioChannelLockedEvent(this, audio, this, association);
+                audio.getPlugin().getBot().getEventDispatcher().execute(event);
             }
             
             return ownership;
@@ -229,7 +242,8 @@ public abstract class AudioChannel {
         }
         if (added) {
             Audio audio = getMixer().getAudio();
-            audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelUserBeginEvent(this, audio, this, user, provider));
+            Event event = new AudioChannelUserBeginEvent(this, audio, this, user, provider);
+            audio.getPlugin().getBot().getEventDispatcher().execute(event);
         }
         return added;
     }
@@ -244,7 +258,8 @@ public abstract class AudioChannel {
         boolean removed = provider == null;
         if (removed) {
             Audio audio = getMixer().getAudio();
-            audio.getPlugin().getBot().getEventDispatcher().execute(new AudioChannelUserEndEvent(this, audio, this, user, provider));
+            Event event = new AudioChannelUserEndEvent(this, audio, this, user, provider);
+            audio.getPlugin().getBot().getEventDispatcher().execute(event);
         }
         return removed;
     }
@@ -294,8 +309,9 @@ public abstract class AudioChannel {
         if (!players.remove((AudioPlayer) channel))
             throw new IllegalArgumentException("Failed to remove audio player");
 
-        if (players.size() <= 0)
+        if (players.size() <= 0) {
             owner.onChannelPassivated(this);
+        }
     }
 
     public final boolean stopAll() {

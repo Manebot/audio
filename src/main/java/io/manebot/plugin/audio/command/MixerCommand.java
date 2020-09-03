@@ -214,6 +214,9 @@ public class MixerCommand extends AnnotatedCommandExecutor {
     }
 
     private void getMixerInfo(CommandSender sender, Mixer mixer) throws CommandExecutionException {
+        if (mixer == null)
+            throw new CommandArgumentException("There is no mixer associated with this chat.");
+
         sender.sendDetails(
                 builder -> builder.name("Mixer").key(mixer.getId())
                         .item("Instance", mixer.getClass().getSimpleName())

@@ -9,7 +9,7 @@ public class AudioChannelUserMoveEvent extends AudioChannelEvent {
     private final AudioChannel from;
 
     private final Runnable follow;
-    private final boolean joined, left;
+    private final boolean joined, left, away;
 
     private boolean followed;
 
@@ -20,7 +20,8 @@ public class AudioChannelUserMoveEvent extends AudioChannelEvent {
                                      PlatformUser platformUser,
                                      boolean joined,
                                      boolean left,
-                                     Runnable follow) {
+                                     Runnable follow,
+                                     boolean away) {
         super(sender, audio, to);
 
         this.platformUser = platformUser;
@@ -28,6 +29,7 @@ public class AudioChannelUserMoveEvent extends AudioChannelEvent {
         this.follow = follow;
         this.joined = joined;
         this.left = left;
+        this.away = away;
     }
 
     public AudioChannel getFromChannel() {
@@ -48,6 +50,10 @@ public class AudioChannelUserMoveEvent extends AudioChannelEvent {
 
     public boolean wasFollowed() {
         return followed;
+    }
+
+    public boolean wasMovedAway() {
+        return away;
     }
 
     public void follow() {

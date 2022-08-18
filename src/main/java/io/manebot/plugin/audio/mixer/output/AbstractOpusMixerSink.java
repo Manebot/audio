@@ -369,6 +369,11 @@ public abstract class AbstractOpusMixerSink implements OpusMixerSink {
         return waitTime;
     }
 
+    @Override
+    public String toString() {
+        return "Opus[" + bufferSize + "]";
+    }
+
     private final class OpusPacket {
         private final int samples;
         private final byte[] bytes;

@@ -55,12 +55,12 @@ public class PipedMixerChannel implements MixerChannel {
 
     @Override
     public int getSampleRate() {
-        return -1;
+        return (int) parent.getAudioFormat().getSampleRate();
     }
 
     @Override
     public int getChannels() {
-        return -1;
+        return parent.getAudioFormat().getChannels();
     }
 
     @Override
@@ -91,5 +91,10 @@ public class PipedMixerChannel implements MixerChannel {
                 return n;
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return "PipedChannel{" + parent.toString() + "}";
     }
 }

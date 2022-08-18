@@ -67,7 +67,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
     @Command(description = "Lists mixer channels for the another mixer", permission = "audio.mixer.channels")
     public void channels(CommandSender sender,
                          @CommandArgumentLabel.Argument(label = "channels") String players,
-                         @CommandArgumentLabel.Argument(label = "id") String id,
+                         @CommandArgumentString.Argument(label = "id") String id,
                          @CommandArgumentPage.Argument() int page)
             throws CommandExecutionException {
         getMixerChannels(sender, getMixerById(id), page);
@@ -142,7 +142,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                 builder -> builder.direct(new ArrayList<>(mixer.getChannels())).page(page)
                 .responder((textBuilder,c) -> textBuilder
                         .append(c.getName())
-                        .append(" (" + c.getClass().getSimpleName() + ", "
+                        .append(" (" + c.toString() + ", "
                                 + (c.isPlaying() ? "playing, " : "")
                                 + c.available() + " av)"))
         );
@@ -157,7 +157,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                 builder -> builder.direct(mixers).page(page)
                         .responder((textBuilder,c) -> textBuilder
                                 .append(c.getId())
-                                .append(" (" + c.getClass().getSimpleName() + ", "
+                                .append(" (" + c.toString() + ", "
                                         + (c.isRunning() ? "running, " : "stopped, ")
                                         + (c.isPlaying() ? "playing, " : "paused, ")
                                         + c.getBufferSize() + " smp, "
@@ -186,7 +186,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
                 MixerSink.class,
                 builder -> builder.direct(new ArrayList<>(mixer.getSinks())).page(page)
                         .responder((textBuilder,c) -> textBuilder
-                                .append(c.getClass().getName())
+                                .append(c.getName())
                                 .append(" (")
                                 .append(c.isRunning() ? "running, " : "stopped, ")
                                 .append(c.getBufferSize() + " smp, ")
@@ -219,7 +219,7 @@ public class MixerCommand extends AnnotatedCommandExecutor {
 
         sender.sendDetails(
                 builder -> builder.name("Mixer").key(mixer.getId())
-                        .item("Instance", mixer.getClass().getSimpleName())
+                        .item("Instance", mixer.toString())
                         .item("Played", String.format("%.3f", mixer.getPositionInSeconds())
                                 + " second(s), " + mixer.available() + " av")
                         .item("Buffer size", mixer.getBufferSize() + " sample(s)")

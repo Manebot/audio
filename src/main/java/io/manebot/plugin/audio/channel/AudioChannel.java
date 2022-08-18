@@ -238,14 +238,24 @@ public abstract class AudioChannel {
 
         boolean added;
         synchronized (providerMap) {
-            added = providerMap.put(user, provider) != provider;
+            AudioProvider currentProvider = providerMap.get(user);
+
+            if (currentProvider != null) {
+                removeProvider(user);
+            }
+
+            if (provider != null) {
+                providerMap.put(user, provider);
+            }
         }
-        if (added) {
+
+        if (provider != null) {
             Audio audio = getMixer().getAudio();
             Event event = new AudioChannelUserBeginEvent(this, audio, this, user, provider);
             audio.getPlugin().getBot().getEventDispatcher().execute(event);
         }
-        return added;
+
+        return provider != null;
     }
 
     public boolean removeProvider(PlatformUser user) {
@@ -255,7 +265,7 @@ public abstract class AudioChannel {
         synchronized (providerMap) {
             provider = providerMap.remove(user);
         }
-        boolean removed = provider == null;
+        boolean removed = provider != null;
         if (removed) {
             Audio audio = getMixer().getAudio();
             Event event = new AudioChannelUserEndEvent(this, audio, this, user, provider);

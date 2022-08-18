@@ -11,4 +11,8 @@ public class NativeMixerSink extends JavaMixerSink {
     public NativeMixerSink(AudioFormat format, int bufferSize) throws LineUnavailableException {
         super(AudioSystem.getSourceDataLine(format), bufferSize);
     }
+
+    public String toString() {
+        return "Java";
+    }
 }

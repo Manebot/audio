@@ -28,19 +28,19 @@
         <repository>
             <id>public-releases</id>
             <name>Manebot public release repository</name>
-            <url>https://repo.manebot.io/repository/public-releases/</url>
+            <url>http://172.31.13.98:8999/repository/public-releases/</url>
             <uniqueVersion>true</uniqueVersion>
         </repository>
         <snapshotRepository>
             <id>public-snapshots</id>
             <name>Manebot public release snapshots</name>
-            <url>https://repo.manebot.io/repository/public-snapshots/</url>
+            <url>http://172.31.13.98:8999/repository/public-snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 	
     <groupId>io.manebot.plugin</groupId>
     <artifactId>audio</artifactId>
-    <version>0.1.14</version>
+    <version>0.3-SNAPSHOT</version>
 
     <build>
         <plugins>

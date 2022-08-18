@@ -58,4 +58,9 @@ public class BasicMixerChannel implements MixerChannel {
     public int read(float[] buffer, int offs, int len) throws IOException {
         return provider.read(buffer, offs, len);
     }
+
+    @Override
+    public String toString() {
+        return "MixerChannel{" + provider.toString() + "}";
+    }
 }

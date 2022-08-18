@@ -1,6 +1,7 @@
 package io.manebot.plugin.audio.mixer;
 
 import io.manebot.plugin.audio.*;
+import io.manebot.plugin.audio.event.mixer.MixerStateChangedEvent;
 import io.manebot.plugin.audio.mixer.filter.MultiChannelFilter;
 import io.manebot.plugin.audio.mixer.filter.MuxedMultiChannelFilter;
 import io.manebot.plugin.audio.mixer.filter.SingleChannelFilter;
@@ -95,9 +96,12 @@ public abstract class AbstractMixer implements Mixer {
 
     @Override
     public Collection<MixerChannel> getChannels() {
-        return Collections.unmodifiableCollection(
-                channels.stream().map(FutureChannel::getChannel).collect(Collectors.toList())
-        );
+        Collection<MixerChannel> realChannels;
+        synchronized (channelLock) {
+            realChannels = channels.stream()
+                    .map(FutureChannel::getChannel).collect(Collectors.toList());
+        }
+        return Collections.unmodifiableCollection(realChannels);
     }
 
     @Override
@@ -217,15 +221,20 @@ public abstract class AbstractMixer implements Mixer {
 
     @Override
     public boolean setRunning(boolean running) {
-        if (running) {
-            return getSinks().stream().filter(x -> !x.isRunning()).allMatch(MixerSink::start);
-        } else {
-            boolean stopped = getSinks().stream().filter(MixerSink::isRunning).allMatch(MixerSink::stop);
+        try {
+            if (running) {
+                return getSinks().stream().filter(x -> !x.isRunning()).allMatch(MixerSink::start);
+            } else {
+                boolean stopped = getSinks().stream().filter(MixerSink::isRunning).allMatch(MixerSink::stop);
 
-            // If stopped, reset all filters.
-            if (stopped) filters.forEach(MultiChannelFilter::reset);
+                // If stopped, reset all filters.
+                if (stopped) filters.forEach(MultiChannelFilter::reset);
 
-            return stopped;
+                return stopped;
+            }
+        } finally {
+            audio.getPlugin().getBot().getEventDispatcher().execute(
+                    new MixerStateChangedEvent(this, audio, this));
         }
     }
 

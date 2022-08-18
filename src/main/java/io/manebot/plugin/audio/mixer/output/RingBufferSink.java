@@ -10,7 +10,9 @@ public class RingBufferSink implements MixerSink {
     private final AudioFormat format;
 
     private boolean running;
-    private int pos;
+    private long pos;
+
+    private long overflows;
 
     public RingBufferSink(AudioFormat format, float seconds) {
         this.format = format;
@@ -30,16 +32,24 @@ public class RingBufferSink implements MixerSink {
     public void write(float[] buffer, int len) {
         try (Profiler profiler = Profiler.region("ringwrite")) {
             synchronized (this.buffer) {
+                if (len > buffer.length) {
+                    throw new ArrayIndexOutOfBoundsException("length > buffer size");
+                }
+
                 // Calculate how much to write
                 int write = Math.min(len, this.buffer.length);
 
+                if (len > this.buffer.length)
+                    overflows++;
+
                 // Left shift current buffer to accommodate the new samples
                 int amount = this.buffer.length - write;
-                if (amount > 0) System.arraycopy(this.buffer, write, this.buffer, 0, amount);
+                if (amount > 0)
+                    System.arraycopy(this.buffer, write, this.buffer, 0, amount);
 
                 // Copy buffer
                 System.arraycopy(
-                        buffer, 0, // copy right side of the incoming data
+                        buffer, 0,
                         this.buffer, this.buffer.length - write, // copy to the right side of the ring buffer
                         write // length
                 );
@@ -99,6 +109,11 @@ public class RingBufferSink implements MixerSink {
 
     @Override
     public long getOverflows() {
-        return 0;
+        return overflows;
+    }
+
+    @Override
+    public String toString() {
+        return "RingBuffer[" + buffer.length + "]";
     }
 }

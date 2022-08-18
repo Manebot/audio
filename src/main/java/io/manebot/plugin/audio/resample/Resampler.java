@@ -56,5 +56,10 @@ public abstract class Resampler implements AutoCloseable {
     }
     
     public abstract int flush(BiFunction<FloatBuffer, Integer, Integer> out, int out_available);
-    
+
+    @Override
+    public String toString() {
+        return "Resampler{" + inputFormat + "->" + outputFormat + "}";
+    }
+
 }

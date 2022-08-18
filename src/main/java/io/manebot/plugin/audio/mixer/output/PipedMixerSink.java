@@ -78,4 +78,9 @@ public class PipedMixerSink implements MixerSink {
     public long getOverflows() {
         return overflowed;
     }
+
+    @Override
+    public String toString() {
+        return "Pipe";
+    }
 }

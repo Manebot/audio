@@ -1,11 +1,12 @@
 package io.manebot.plugin.audio.mixer.input;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class SilentMixerChannel implements MixerChannel {
-    private final long start = System.nanoTime();
+    private long start = System.nanoTime();
     private final float samplesPerSecond;
-    private int channels;
+    private final int channels;
 
     private long sent = 0L;
     private boolean closed = false;
@@ -43,6 +44,8 @@ public class SilentMixerChannel implements MixerChannel {
         // Calculate the count of samples to "send"
         int copy = Math.min(available, len);
 
+        Arrays.fill(buffer, offs, len+offs, 0f);
+
         // Advance the position of the silence generator
         sent += copy;
 
@@ -68,5 +71,16 @@ public class SilentMixerChannel implements MixerChannel {
     @Override
     public void close() throws Exception {
         closed = true;
+    }
+
+    public void reset() {
+        sent = 0L;
+        start = System.nanoTime();
+        closed = false;
+    }
+
+    @Override
+    public String toString() {
+        return "Silence[" + sent + "]";
     }
 }

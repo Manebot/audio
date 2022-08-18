@@ -76,4 +76,8 @@ public class ResampledAudioProvider extends BufferedAudioProvider implements Aud
         return resampler.getOutputFormat().getChannels();
     }
 
+    @Override
+    public String toString() {
+        return "Resampled{" + resampler + "," + provider.toString() + "}";
+    }
 }

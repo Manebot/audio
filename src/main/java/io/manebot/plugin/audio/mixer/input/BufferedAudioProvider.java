@@ -77,4 +77,9 @@ public abstract class BufferedAudioProvider implements AudioProvider {
     public AudioProvider resample(ResamplerFactory factory, int sampleRate, int channels) {
         return resample(factory.create(getFormat(), AudioProvider.getFormat(sampleRate, channels), getBufferSize()));
     }
+
+    @Override
+    public String toString() {
+        return "Buffer{" + bufferSize + "}";
+    }
 }

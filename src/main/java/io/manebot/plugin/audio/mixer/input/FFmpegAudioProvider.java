@@ -139,4 +139,9 @@ public class FFmpegAudioProvider extends BufferedAudioProvider {
 
         throw new FFmpegException("no audio substreams found in input");
     }
+
+    @Override
+    public String toString() {
+        return "Ffmpeg{" + substream + "}";
+    }
 }

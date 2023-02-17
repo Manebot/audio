@@ -73,7 +73,10 @@ public abstract class AudioChannel {
      * @return Blocking player count.
      */
     public int getBlockingPlayers() {
-        return (int) getPlayers().stream().filter(AudioPlayer::isBlocking).count();
+        return (int) getPlayers().stream()
+                .filter(Objects::nonNull)
+                .filter(AudioPlayer::isBlocking)
+                .count();
     }
 
     /**
